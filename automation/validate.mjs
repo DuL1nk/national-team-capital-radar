@@ -3,6 +3,7 @@ import {fs,read,assert,sha,put,load} from './lib.mjs';
 import {compileRatio} from './vendor/work/hs300_ratio_20261110/metric.mjs';
 const offline=process.argv.includes('--offline'),D=read('build/reviewed_with_both.json'),S=read('build/compiled_state.json'),end=S.fundAsOf,p=D.snapshots[end],H=D.productHistory;let checks=0;
 const check=(b,m)=>{assert(b,m);checks++;};
+check(!S.syntheticTest,'Synthetic fixtures must never enter a report');
 const baseline=load().D;
 for(const key of ['ratio252','fourEtfStudy']){const current=new Map(D[key].rows.map(r=>[r.date,r]));for(const old of baseline[key].rows){const r=current.get(old.date);check(!!r,'Do not drop reviewed metric dates');for(const f of key==='ratio252'?['ratioPct','percentile','netAssetsYi','circulatingMarketCapYi']:['marketRank','navRank','marketRatioPct','navRatioPct']){
  const newlyDisclosed=old.date>baseline[key].ratioAsOf&&old[f]===null&&old.date<=D.ratio252.denominatorAsOf;
