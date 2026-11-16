@@ -1,12 +1,15 @@
 name: Daily data refresh
 on:
+  schedule:
+    - cron: '15 1 * * *' # 09:15 Asia/Shanghai
+    - cron: '45 3 * * *' # 11:45 recovery; skip if today's anonymous hash matches
   workflow_dispatch:
     inputs:
       publish:
         description: 'Publish only after validation (false for first cloud trial)'
         type: boolean
         default: false
-# Scheduled triggers are enabled after the first real cloud run is accepted.
+# Enabled after successful real collection, deployment and anonymous verification.
 concurrency:
   group: national-team-data-refresh
   cancel-in-progress: false

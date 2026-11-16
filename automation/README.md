@@ -1,5 +1,7 @@
 # Cloud data pipeline (no model)
 
+Active since 2026-11-16. Run [43803248291](https://github.com/DuL1nk/national-team-capital-radar/actions/runs/43803248291) completed real cloud collection, validation, durable-state commit, Pages deployment, and anonymous date/SHA checks of all historical/research HTML. Scheduled start 09:15 Asia/Shanghai (UTC 01:15), recovery 11:45 (UTC 03:45); a matching already-published daily report is skipped. The former local `09-15` writer is paused. The industry-research task is not changed.
+
 This directory contains a deliberately selected public-data pipeline, not a copy of the desktop workspace. No personal GitHub credentials, model credentials, account data, browser state, or private watchlist are required by the cloud job. `GITHUB_TOKEN` is used only by the commit/deploy steps with job-scoped permissions.
 
 Run `node automation/pipeline.mjs --offline` for audited-baseline calculation checks (never publishes), or `node automation/pipeline.mjs` for actual current public collection. The Actions workflow is `daily-data.yml`; manual runs default to a non-publishing cloud trial.
@@ -22,4 +24,4 @@ The original calculation/chart/research code is under `vendor/` so metric defini
 
 ## Operation
 
-Use the Actions run page for logs, manual reruns and native failure notifications. No new credentials or paid compute configuration is added. The old local 09:15 publisher must stay active until a real cloud collection/build/deploy/readback is accepted, then be paused to prevent duplicate writers. Future human evidence reviews update the explicit baseline/config/template and must pass the same gates.
+Use the Actions run page for logs, manual reruns and native failure notifications. No new credentials or paid compute configuration is added. The old local 09:15 publisher is paused after successful real end-to-end acceptance, preventing duplicate writers. Future human evidence reviews update the explicit baseline/config/template and must pass the same gates. Unattended execution publishes the website and repository watchlist, not files on a powered-off computer or new messages in the Codex conversation. Those local copies may be synchronized when the computer is running.

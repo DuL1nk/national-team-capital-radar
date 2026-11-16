@@ -18,7 +18,11 @@ const products=D.snapshots[previous].products,codes=new Set(products.map(p=>p.co
 // Current validated pool is never silently replaced by a fund-name guess.
 for(const [exchange,key,fields]of [['sse','FUND_CODE',['INDEX_NAME','LISTING_DATE','FUND_ABBR','CATEGORY']],['szse','基金代码',['基金简称','上市日期','投资类别']]]){
  const old=new Map(S.directories[exchange].rows.map(r=>[r[key],r])),fresh=new Map(directory[exchange].rows.map(r=>[r[key],r]));
- for(const [code,row]of old){if(!fresh.has(code)){directoryChanges.push({exchange,code,type:'removed'});assert(!codes.has(code),'Tracked fund removed: effective-date review required '+code);}else if(codes.has(code)){for(const f of fields)assert.equal(fresh.get(code)[f],row[f],'Tracked metadata changed: audit '+code+' '+f);}}
+ for(const [code,row]of old){if(!fresh.has(code)){directoryChanges.push({exchange,code,type:'removed'});assert(!codes.has(code),'Tracked fund removed: effective-date review required '+code);}else if(codes.has(code)){for(const f of fields)assert.equal(fresh.get(code)[f],row[f],'Tracked metadata changed: audit '+code+' '+f);}else if(fields.some(f=>fresh.get(code)[f]!==row[f])){
+  const current=fresh.get(code),text=exchange==='sse'?String(current.INDEX_NAME||'')+' '+current.FUND_ABBR:String(current['基金简称']||'');
+  directoryChanges.push({exchange,code,type:'untracked_metadata_changed',name:text});
+  assert(!/沪深300|中证(?:500|1000|2000|A500|A50|A100|全指|800)|上证(?:50|180|380|580|综指)|科创(?:50|100|200|综指)|创业板|深证(?:100|300|50|综指)|深成|国证2000|央企|国企|国新|诚通|中央企业|MSCI/.test(text),'Existing excluded product may have transformed into scope: audit '+code+' '+text);
+ }}
  for(const [code,row]of fresh)if(!old.has(code)){
   const text=exchange==='sse'?String(row.INDEX_NAME||'')+' '+row.FUND_ABBR:String(row['基金简称']||'');
   const broad=/沪深300|中证(?:500|1000|2000|A500|A50|A100|全指|800)|上证(?:50|180|380|580|综指)|科创(?:50|100|200|综指)|创业板|深证(?:100|300|50|综指)|深成|国证2000|央企|国企|国新|诚通|中央企业|MSCI|自由现金流/.test(text);
