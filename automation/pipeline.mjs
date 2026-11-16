@@ -3,7 +3,7 @@ import {spawnSync} from 'node:child_process';
 import {fs,read,put,load,save,assert,esc,sha,dateCN} from './lib.mjs';
 const root=process.cwd(),offline=process.argv.includes('--offline'),vendor='automation/vendor',date=dateCN();
 fs.mkdirSync('build',{recursive:true});
-function run(args,{cwd=root,log}={}){const r=spawnSync(process.execPath,args,{cwd,encoding:'utf8',maxBuffer:20*1024*1024});if(log)put('build/'+log,(r.stdout||'')+'\n'+(r.stderr||''));if(r.status!==0)throw Error(args[0]+' failed: '+String(r.stderr||r.stdout).slice(-5000));if(!log)console.log(r.stdout.trim());}
+function run(args,{cwd=root,log}={}){const r=spawnSync(process.execPath,args,{cwd,...(log?{encoding:'utf8',maxBuffer:20*1024*1024}:{stdio:'inherit'})});if(log)put('build/'+log,(r.stdout||'')+'\n'+(r.stderr||''));if(r.status!==0)throw Error(args[0]+' failed: '+String(r.stderr||r.stdout||'see preceding step output').slice(-5000));}
 if(offline){const s=load();s.reportDate=date;s.newDates=s.D.productHistory.dates.slice(-2);put('build/collected.json',s);}else run(['automation/collect.mjs']);
 run(['automation/compile.mjs']);
 const state=read('build/compiled_state.json'),D=read('build/reviewed.json'),end=state.fundAsOf,reportDate=state.reportDate;

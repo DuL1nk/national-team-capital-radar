@@ -54,6 +54,7 @@ jobs:
           name: data-audit-${{ github.run_id }}
           path: |
             build/source_audit.json
+            build/source_failure.json
             build/directory_audit.json
             build/calculation_gates.json
             build/validation.json

@@ -1,6 +1,7 @@
 import {spawnSync} from 'node:child_process';
 import {load,read,put,get,audit,assert,sleep,mergeRows,dateCN,addDay,sha} from './lib.mjs';
 const S=load(),args=process.argv.slice(2),date=args.includes('--date')?args[args.indexOf('--date')+1]:dateCN();
+process.on('uncaughtException',e=>{put('build/source_failure.json',{reportDate:date,failedAt:new Date().toISOString(),error:e.message,requestsCompleted:audit});console.error(e.stack);process.exit(1);});
 assert(/^\d{4}-\d\d-\d\d$/.test(date)&&date<=dateCN(),'Invalid report date');
 const D=S.D,previous=S.fundAsOf,defs=[['sh','sh000001'],['cy','sz399006'],['star50','sh000688'],['hs300','sh000300'],['zz500','sh000905'],['zz1000','sh000852']];
 const quote=async(symbol,n=100,unadjusted=false)=>{
@@ -37,7 +38,7 @@ for(const p of products){const code=p.code,raw=await get('https://fund.eastmoney
   const url='https://push2his.eastmoney.com/api/qt/stock/kline/get?'+new URLSearchParams({secid:(p.exchange==='SSE'?'1.':'0.')+code,klt:'101',fqt:'0',beg:newDates[0].replaceAll('-',''),end:end.replaceAll('-',''),lmt:'1000',fields1:'f1,f2,f3,f4,f5,f6',fields2:'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61'}),q=JSON.parse(await get(url,{referer:'https://quote.eastmoney.com/'}));assert(q.data?.klines?.length,'No market');
   const rs=q.data.klines.map(x=>x.split(',')).map(x=>[x[0],...x.slice(1).map(v=>v==='-'||v===''?null:Number(v))]).filter(r=>r[0]<=end);assert(rs.every(r=>r[2]>0));
   S.market[code]=mergeRows(S.market[code]||[],rs,r=>r[0],(a,b)=>Math.abs(a[2]-b[2])<.00001,'Unadjusted price '+code).slice(-150);
- }catch(e){missingMarket.push({code,error:e.message});}
+ }catch(e){if(/Access\/rate response/.test(e.message))throw e;missingMarket.push({code,error:e.message});}
  if(fourCodes.includes(code)&&!S.market[code].some(r=>r[0]===end)){
   const q=await quote((p.exchange==='SSE'?'sh':'sz')+code,100,true),rs=q.rows.filter(r=>r[0]<=end).map(r=>[r[0],Number(r[1]),Number(r[2]),Number(r[3]),Number(r[4]),null,null,null,null]);
   S.market[code]=mergeRows(S.market[code]||[],rs,r=>r[0],(a,b)=>Math.abs(a[2]-b[2])<.00001,'Four unadjusted price '+code).slice(-150);
