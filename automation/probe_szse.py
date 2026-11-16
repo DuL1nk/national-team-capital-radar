@@ -5,7 +5,11 @@ jobs=[('directory','https://fund.szse.cn/api/report/ShowReport',{'SHOWTYPE':'xls
 results=[]
 for name,url,params in jobs:
     try:
-        r=requests.get(url,params=params,headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.szse.cn/market/fund/volume/etf/index.html'},timeout=45)
+        try:
+            r=requests.get(url,params=params,headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.szse.cn/market/fund/volume/etf/index.html'},timeout=45)
+        except requests.exceptions.ConnectionError:
+            if name!='directory':raise
+            r=requests.get('https://www.szse.cn/api/report/ShowReport',params=params,headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.szse.cn/'},timeout=45)
         r.raise_for_status()
         df=pd.read_excel(io.BytesIO(r.content))
         assert 0<len(df)<65535
