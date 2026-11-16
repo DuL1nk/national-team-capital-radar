@@ -2,8 +2,8 @@
   "schema": 1,
   "fundAsOf": "2026-11-13",
   "ratioAsOf": "2026-10-30",
-  "baselineSha256": "5ca8c5ef1013c34d39f5fd963b424bb50c890b0871d58ea57e95ae52e539584d",
-  "bytes": 6278019,
+  "baselineSha256": "9af2172537e2cc4e2ce983bf4752cfa79c388f1bdb19c9c2a28c2754a843a5fa",
+  "bytes": 7478542,
   "products": 371,
   "corporateActions": 31,
   "sources": [
