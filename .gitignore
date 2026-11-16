@@ -1,0 +1,11 @@
+/build/
+/automation/vendor/**/originals/
+/automation/vendor/national_team_capital_monitor_*.html
+/automation/vendor/hs300_four_etf_backtest*.html
+/automation/vendor/work/hs300_four_etf_20261110/history/four_history.json
+/automation/vendor/work/hs300_four_etf_20261110/definition/denominator_combined.json
+/automation/vendor/work/hs300_four_etf_20261110/study.json
+/automation/vendor/work/hs300_four_etf_20261110/study_summary.json
+/automation/vendor/work/hs300_four_etf_20261110/validation.json
+/probe-results.json
+/szse-probe-results.json

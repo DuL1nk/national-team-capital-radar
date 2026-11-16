@@ -1,0 +1,116 @@
+{
+  "checkedAt": "2026-11-10T07:43:48.759Z",
+  "platform": "EasyK.work",
+  "publicSources": [
+    {
+      "url": "https://easyk.work/",
+      "role": "Homepage publicly references app and workspace chunks"
+    },
+    {
+      "url": "https://easyk.work/assets/app-B4POSpp-.js",
+      "sha256": "5c409771cd3aca848dc4bba95fe80b1a5032e17f0f6aaa78c57bfb6c9f7290d4"
+    },
+    {
+      "url": "https://easyk.work/assets/WorkspaceView-COp3QPWK.js",
+      "sha256": "50aac35f6973737de17fc0b03ee8049af47790f5f1b572abbb4cc7d308e1157f"
+    },
+    {
+      "url": "https://easyk.work/assets/events.worker-Cw3y4eDU.js",
+      "sha256": "2f21af8f545b0aeca438fb668d357b6b68e060d1f615582f5b61ad298b767a95"
+    },
+    {
+      "url": "https://easyk.work/articles/weekly-review-2026-02-15",
+      "publishedDate": "2026-02-16",
+      "role": "Public examples confirm next actual observation entry; footer says returns start at first valid observation after trigger"
+    }
+  ],
+  "rankContract": {
+    "function": "rank_pct(x,n) mapped to by",
+    "window": "last n axis points including current",
+    "axis": "Union of actual dates of referenced curve.data; exact-date map, missing null, no formula forward-fill",
+    "missing": "Within last n axis positions remove null/nonfinite",
+    "partialWarmup": "Allowed, not full-n required",
+    "nLe1": "rank=1",
+    "formula": "(strictlyLower + (ties - 1)/2)/(validCount - 1)",
+    "range": "0 to1",
+    "rounding": "No rank rounding; rt converts finite numeric only"
+  },
+  "eventContract": {
+    "trigger": "False-to-true transition, not every true day",
+    "entry": "Strictly first actual target observation later than eventDate",
+    "exit": "target[entryIndex+N]",
+    "entryDuplicate": "Distinct entryDate only",
+    "baseline": "Mean target N-observation forward return over all eligible target start points in loaded range",
+    "median": "sortedReturns[floor(n/2)] upper median",
+    "winRate": "Fraction sample returns strictly greater than baseline",
+    "directionWinRate": "If meanExcess positive use fraction>baseline; if negative fraction<baseline; zero null",
+    "returnRounding": "Return result d rounds4 decimal places",
+    "unsupported": "No original basket/source formula or publication point-in-time proof established by these engine functions"
+  },
+  "functions": {
+    "workspace.by": {
+      "offset": 156484,
+      "code": "function by(e,t,n){const a=qe(e,n),r=$n(t);return a.map((i,s)=>{const u=Fe(i);if(u==null)return null;const c=a.slice(Math.max(0,s-r+1),s+1).map(Fe).filter(l=>l!=null);if(c.length<=1)return 1;const v=c.filter(l=>l<u).length,m=c.filter(l=>l===u).length;return rt((v+(m-1)/2)/(c.length-1))})}"
+    },
+    "workspace.qe": {
+      "offset": 159119,
+      "code": "function qe(e,t){return Array.isArray(e)?e:Array.from({length:t},()=>e)}"
+    },
+    "workspace.Fe": {
+      "offset": 159969,
+      "code": "function Fe(e){return rt(e)}"
+    },
+    "workspace.rt": {
+      "offset": 159872,
+      "code": "function rt(e){if(e==null||e===\"\")return null;const t=Number(e);return Number.isFinite(t)?t:null}"
+    },
+    "workspace.$n": {
+      "offset": 159755,
+      "code": "function $n(e){const t=Array.isArray(e)?Number(e[0]):Number(e);return Math.max(1,Math.round(Number.isFinite(t)?t:1))}"
+    },
+    "workspace.ly": {
+      "offset": 145357,
+      "code": "function ly(e){return Array.from(new Set(e.flatMap(t=>(t==null?void 0:t.data)||[]).map(t=>String(t[0]||\"\")).filter(Boolean))).sort((t,n)=>si(t)-si(n))}"
+    },
+    "workspace.sy": {
+      "offset": 145508,
+      "code": "function sy(e,t){return Object.fromEntries(e.map(n=>{var r;const a=new Map((((r=n.curve)==null?void 0:r.data)||[]).map(i=>[String(i[0]),uy(i,n.curve)]));return[n.code,t.map(i=>a.get(i)??null)]}))}"
+    },
+    "events.A": {
+      "offset": 3174,
+      "code": "function A(n,e){const t=[];let r=!1;return n.forEach((s,i)=>{s&&!r&&t.push({index:i,date:e[i]}),r=s}),t}"
+    },
+    "events.L": {
+      "offset": 4715,
+      "code": "function L({occurrence:n,target:e}"
+    },
+    "events.P": {
+      "offset": 5048,
+      "code": "function P({window:n,points:e,entryIndex:t,entryValue:r}"
+    },
+    "events.V": {
+      "offset": 5347,
+      "code": "function V(n,e,t,r){const s=e.map(f=>{var b;return(b=f.windows.find(tn=>tn.window===n))==null?void 0:b.returnPct}).filter(Number.isFinite),i=x(t,n,r);if(!s.length)return{window:n,sampleCount:0,meanReturn:null,medianReturn:null,winRate:null,directionWinRate:null,baselineReturn:d(i),excessReturn:null,std:null};const l=s.reduce((f,b)=>f+b,0)/s.length,a=[...s].sort((f,b)=>f-b),o=s.length>1?Math.sqrt(s.reduce((f,b)=>f+(b-l)**2,0)/(s.length-1)):null,m=Number.isFinite(i)?s.filter(f=>f>i).length/s.length:null,g=Number.isFinite(i)?s.filter(f=>f<i).length/s.length:null,c=Number.isFinite(i)?l-i:null,u=Number.isFinite(c)?c>0?m:c<0?g:null:null;return{window:n,sampleCount:s.length,meanReturn:d(l),medianReturn:d(a[Math.floor(a.length/2)]),winRate:d(m),directionWinRate:d(u),baselineReturn:d(i),excessReturn:d(c),std:d(o)}}"
+    },
+    "events.x": {
+      "offset": 6164,
+      "code": "function x(n,e,t){const r=`${n.id||\"\"}::${e}`;if(t.baselineCache.has(r))return t.baselineCache.get(r);const s=n.points||[],i=[];s.forEach(([a,o],m)=>{var c;if(!Number.isFinite(o)||o===0)return;const g=(c=s[m+e])==null?void 0:c[1];Number.isFinite(g)&&i.push((g/o-1)*100)});const l=i.length?i.reduce((a,o)=>a+o,0)/i.length:null;return t.baselineCache.set(r,l),l}"
+    },
+    "events.T": {
+      "offset": 3883,
+      "code": "function T(n,e,t){const r=`${n.id||\"\"}::${e.id||\"\"}`;if(t.studyCache.has(r))return t.studyCache.get(r);const s=new Map;(n.occurrences||[]).forEach(l=>{const a=L({occurrence:l,target:e});a&&!s.has(a.entryDate)&&s.set(a.entryDate,a)});const i=Array.from(s.values());return t.studyCache.set(r,i),i}"
+    },
+    "events.j": {
+      "offset": 7496,
+      "code": "function j(n,e){const t=String(e||\"\");let r=0,s=n.length;for(;r<s;){const i=Math.floor((r+s)/2);n[i][0]<=t?r=i+1:s=i}return r<n.length?r:-1}"
+    },
+    "events.d": {
+      "offset": 8926,
+      "code": "function d(n){return Number.isFinite(n)?Number(n.toFixed(4)):null}"
+    },
+    "events.M": {
+      "offset": 1849,
+      "code": "function M(n,e){const t=new Map(n);let r=null;return e.map(s=>(t.has(s)&&(r=t.get(s)),r))}"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+(()=>{'use strict';
+const D=JSON.parse(document.getElementById('reviewedData').textContent),$=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(v,d=2)=>Number.isFinite(v)?v.toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+const signed=v=>Number.isFinite(v)?(v>0?'+':v<0?'−':'')+num(Math.abs(v)):'—';
+const amount=v=>signed(v)+'亿',pct=v=>Number.isFinite(v)?num(v)+'%':'—',cls=v=>v>0?'pos':v<0?'neg':'';
+const cell=v=>'<td class="'+cls(v)+'">'+signed(v)+'</td>';let pool='broad',group='all',product='all';const productScopes=new Map();
+function selected(){const p=D.pools[pool];if(product==='all')return group==='all'?p:{...p.groups[group],label:group};if(productScopes.has(product))return productScopes.get(product);const item=D.products.find(x=>x.code===product),h=D.productHistory.products[product],series=D.productHistory.dates.map((d,i)=>{const flow=i>=h.start?h.flows[i-h.start]:null,active=d>=h.effectiveDate,expected=d>h.effectiveDate,valid=Number.isFinite(flow);return[d,flow,valid?1:0,expected?1:0,null,valid&&flow>0?1:0,valid&&flow<0?1:0,active?1:0];}),last=series.at(-1),s={...item,count:1,label:item.code+' '+item.name,codes:[product],series,n:last[2],e:last[3],pos:last[5],neg:last[6],cap:null,top:{code:product,sign:Math.sign(item.flow),share:100}};productScopes.set(product,s);return s;}
+function scopeProducts(){return D.products.filter(p=>p.tags.includes(pool)&&(group==='all'||(pool==='policy'?p.policyGroup:p.group)===group));}
+function selectedProducts(){return scopeProducts().filter(p=>product==='all'||p.code===product);}
+function productOptions(){const ps=scopeProducts().sort((a,b)=>a.code.localeCompare(b.code));if(!ps.some(p=>p.code===product))product='all';$('targetSelect').innerHTML='<option value="all">全部ETF（'+ps.length+'只）</option>'+ps.map(p=>'<option value="'+p.code+'">'+p.code+' '+esc(p.name)+'</option>').join('');$('targetSelect').value=product;}
+function groupOptions(){const names=Object.keys(D.pools[pool].groups).sort((a,b)=>Math.abs(D.pools[pool].groups[b].flow)-Math.abs(D.pools[pool].groups[a].flow));$('groupSelect').innerHTML='<option value="all">全部方向</option>'+names.map(g=>'<option value="'+esc(g)+'">'+esc(g)+'（'+D.pools[pool].groups[g].count+'只）</option>').join('');if(!names.includes(group))group='all';$('groupSelect').value=group;}
+function productTable(){let ps=selectedProducts(),q=$('productSearch').value.trim().toLowerCase(),f=$('productFilter').value;
+ ps=ps.filter(p=>(!q||(p.code+p.name+p.group).toLowerCase().includes(q))&&(f==='all'||f==='in'&&p.flow>0||f==='out'&&p.flow<0||f==='volume'&&p.ratio>=1.8||f==='support'&&p.flow>0&&p.change<0)).sort((a,b)=>Math.abs(b.flow||0)-Math.abs(a.flow||0));
+ $('productCount').textContent=ps.length+' / '+selectedProducts().length+'只';$('productSummary').textContent='逐只ETF（'+selectedProducts().length+'只）｜份额、申赎、强度、量价';
+ $('productBody').innerHTML=ps.map(p=>'<tr><td><a href="https://fund.eastmoney.com/'+p.code+'.html" target="_blank" rel="noopener">'+p.code+'</a><span class="scope">'+esc(pool==='policy'?p.policyGroup:p.group)+'</span></td><td>'+esc(p.name)+'</td><td>'+num(p.shares,4)+'</td>'+cell(p.delta)+cell(p.flow)+cell(p.flow5)+cell(p.flow21)+'<td>'+pct(p.strength)+'</td><td>'+num(p.pct,1)+'%<span class="scope">n='+p.pctN+'</span></td><td>'+num(p.amount)+'</td><td>'+num(p.ratio)+'×</td><td>'+signed(p.premium)+'%</td><td class="'+cls(p.change)+'">'+signed(p.change)+'%</td><td>'+esc(p.status==='ok'?'可计算':p.status)+'</td></tr>').join('')||'<tr><td colspan="14">无匹配产品。</td></tr>';
+}
+function directionTable(){const p=D.pools[pool],priority=['沪深300','中证1000','中证500','创业板','上证50','科创50','中证A500'],rank=g=>priority.includes(g)?priority.indexOf(g):100,names=product!=='all'?[selected().label]:Object.keys(p.groups).filter(g=>group==='all'||g===group).sort((a,b)=>rank(a)-rank(b)||Math.abs(p.groups[b].flow)-Math.abs(p.groups[a].flow));
+ const rows=names.map(g=>{const v=product!=='all'?selected():p.groups[g],t=v.top;return'<tr><td><strong>'+esc(g)+'</strong><span class="scope">'+v.count+'只 · 可计算'+v.n+'/'+v.e+'</span></td>'+cell(v.flow)+cell(v.flow5)+cell(v.flow21)+'<td>'+(t?t.code+' · '+(t.sign>0?'申购':'赎回')+'头部 '+num(t.share,1)+'%':'无同号净流')+'</td></tr>';});
+ $('directionBody').innerHTML=rows.slice(0,8).join('');$('otherBody').innerHTML=rows.slice(8).join('');$('otherGroups').hidden=rows.length<=8;$('otherSummary').textContent='其余'+Math.max(0,rows.length-8)+'个方向明细';$('tableScope').textContent=selected().label+' · '+D.asOf+' · 金额单位亿元';
+ $('coverageNote').textContent='头部流量占比：最大单只同号净申赎 / 同号净申赎总额，不是持有人集中度。'+(pool==='policy'?'央企主题包含跨境产品；跨境折溢价受时差影响，须独立解释。':'当前存续产品历史回溯，不含期间已退市产品。');
+ const visible=selectedProducts(),marketValid=visible.filter(x=>Number.isFinite(x.amount)&&Number.isFinite(x.change)).length;
+ if(marketValid<visible.length)$('coverageNote').textContent+=' 当日量价仅'+marketValid+'/'+visible.length+'只有效，其余留空；不影响已核份额×NAV的申赎计算。';
+}
+function update(){const s=selected(),label=s.label;
+ $('scopeBadge').textContent='B · '+label+'（'+s.count+'只）';$('daily-verdict').textContent=pool==='broad'&&group==='all'&&product==='all'&&s.flow<0&&s.streak>=3?'宽基连续'+s.streak+'日净赎回，短期承接降级'+(s.flow60>0?'；中期净额仍正':'；中期净额亦负'):label+'当日'+(s.flow>0?'净申购':s.flow<0?'净赎回':'申赎接近平衡')+'，'+(s.flow60>0?'中期承接仍为正':'中期资金仍在流出');
+ $('verdictText').textContent=D.asOf+'估算'+amount(s.flow)+'元，计算覆盖'+s.n+'/'+s.e+'只；近5日'+amount(s.flow5)+'元。这反映市场净申赎，不能确认国家队账户。';
+ ['flow','flow10','flow60','flow242'].forEach((k,i)=>{const e=$('kpi'+i);e.textContent=amount(s[k]);e.className=s[k]>=0?'up':'down';});
+ $('etfView').innerHTML='<strong>'+esc(label)+' '+amount(s.flow)+'元</strong>；'+(group==='all'&&product==='all'?'覆盖'+Object.keys(D.pools[pool].groups).length+'个方向':'共'+s.count+'只产品')+'。市场流量<strong>无法按账户归因</strong>。';
+ $('strength').textContent=product!=='all'?pct(s.strength):s.cap>0?pct(s.flow/s.cap*100):'—';$('breadth').textContent=s.n>0?pct(s.pos/s.n*100):'—';$('breadthNote').textContent='净申购'+s.pos+' / 净赎回'+s.neg+' / 可计算'+s.n+'只';$('percentile').textContent=pct(s.pct);$('percentileNote').textContent='此前'+s.pctN+'个可用交易日；至少60日';$('streak').textContent=(s.flow>0?'净申购':s.flow<0?'净赎回':'零净流')+' '+s.streak+'日';$('streakNote').textContent='近5日中'+s.positive5+'日净申购；非账户持续增持';
+ directionTable();productTable();charts.render('bar',s);charts.render('cum',s);
+}
+const charts=CapitalTrendCharts({data:D,getScope:selected});
+$('poolSelect').addEventListener('change',e=>{pool=e.target.value;group='all';product='all';groupOptions();productOptions();update();});$('groupSelect').addEventListener('change',e=>{group=e.target.value;product='all';productOptions();update();});$('targetSelect').addEventListener('change',e=>{product=e.target.value;update();});$('resetScope').addEventListener('click',()=>{group='all';product='all';groupOptions();productOptions();update();});$('productSearch').addEventListener('input',productTable);$('productFilter').addEventListener('change',productTable);groupOptions();productOptions();update();
+})();

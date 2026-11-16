@@ -1,0 +1,3 @@
+import {fs,assert} from './lib.mjs';
+const allowed=n=>['index.html','site-status.json','four-study-status.json','public-source-audit.json','.nojekyll'].includes(n)||/^(?:national_team_capital_monitor_\d{4}-\d\d-\d\d|hs300_four_etf_backtest(?:_\d{4}-\d\d-\d\d)?)\.html$/.test(n);
+fs.mkdirSync('build/deploy',{recursive:true});let total=0,count=0;for(const n of fs.readdirSync('.').filter(allowed)){const s=fs.lstatSync(n);assert(s.isFile()&&!s.isSymbolicLink());total+=s.size;fs.copyFileSync(n,'build/deploy/'+n);count++;}assert(total<900*1024*1024);assert(count>=23);console.log(JSON.stringify({files:count,bytes:total,scope:'Only sanitized static artifacts; no pipeline, state, raw data or credentials'}));

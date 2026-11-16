@@ -1,0 +1,108 @@
+name: Daily data refresh
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish only after validation (false for first cloud trial)'
+        type: boolean
+        default: false
+# Scheduled triggers are enabled after the first real cloud run is accepted.
+concurrency:
+  group: national-team-data-refresh
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.repository == 'DuL1nk/national-team-capital-radar'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: write
+    outputs:
+      publish: ${{ steps.mode.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r automation/requirements.txt
+      - name: Select publication mode
+        id: mode
+        env:
+          PUBLISH_REQUEST: ${{ inputs.publish || github.event_name == 'schedule' }}
+        run: echo "publish=$PUBLISH_REQUEST" >> "$GITHUB_OUTPUT"
+      - name: Fetch, calculate and validate (no model)
+        run: node automation/pipeline.mjs
+      - name: Package static-only website
+        run: node automation/package.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-audit-${{ github.run_id }}
+          path: |
+            build/source_audit.json
+            build/directory_audit.json
+            build/calculation_gates.json
+            build/validation.json
+            build/study_validation.log
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: steps.mode.outputs.publish != 'true'
+        with:
+          name: validated-cloud-preview
+          path: build/deploy
+          retention-days: 7
+      - name: Commit durable public data and reports
+        if: steps.mode.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- index.html site-status.json four-study-status.json public-source-audit.json national_team_capital_monitor_*.html hs300_four_etf_backtest*.html automation/state/baseline.json.gz automation/state/manifest.json automation/watchlist.md
+          git diff --cached --quiet || git commit -m "Refresh public data $(date -u +%F) [skip ci]"
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin HEAD:main
+      - uses: actions/configure-pages@v5
+        if: steps.mode.outputs.publish == 'true'
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.mode.outputs.publish == 'true'
+        with:
+          path: build/deploy
+  deploy:
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy same GitHub Pages site
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Anonymous date and hash verification
+        run: node automation/verify.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-verification-${{ github.run_id }}
+          path: build/public-verification.json
+          retention-days: 14
