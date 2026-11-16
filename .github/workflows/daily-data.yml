@@ -19,8 +19,9 @@ jobs:
     timeout-minutes: 50
     permissions:
       contents: write
+      pages: read
     outputs:
-      publish: ${{ steps.mode.outputs.publish }}
+      publish: ${{ steps.mode.outputs.publish == 'true' && steps.freshness.outputs.run == 'true' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -38,9 +39,14 @@ jobs:
         env:
           PUBLISH_REQUEST: ${{ inputs.publish || github.event_name == 'schedule' }}
         run: echo "publish=$PUBLISH_REQUEST" >> "$GITHUB_OUTPUT"
+      - name: Avoid duplicate successful daily publication
+        id: freshness
+        run: node automation/should-run.mjs
       - name: Fetch, calculate and validate (no model)
+        if: steps.freshness.outputs.run == 'true'
         run: node automation/pipeline.mjs
       - name: Package static-only website
+        if: steps.freshness.outputs.run == 'true'
         run: node automation/package.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -54,13 +60,13 @@ jobs:
             build/study_validation.log
           retention-days: 14
       - uses: actions/upload-artifact@v4
-        if: steps.mode.outputs.publish != 'true'
+        if: steps.mode.outputs.publish != 'true' && steps.freshness.outputs.run == 'true'
         with:
           name: validated-cloud-preview
           path: build/deploy
           retention-days: 7
       - name: Commit durable public data and reports
-        if: steps.mode.outputs.publish == 'true'
+        if: steps.mode.outputs.publish == 'true' && steps.freshness.outputs.run == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -70,9 +76,9 @@ jobs:
           git diff --cached --quiet || git commit -m "Refresh public data $(date -u +%F) [skip ci]"
           git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin HEAD:main
       - uses: actions/configure-pages@v5
-        if: steps.mode.outputs.publish == 'true'
+        if: steps.mode.outputs.publish == 'true' && steps.freshness.outputs.run == 'true'
       - uses: actions/upload-pages-artifact@v4
-        if: steps.mode.outputs.publish == 'true'
+        if: steps.mode.outputs.publish == 'true' && steps.freshness.outputs.run == 'true'
         with:
           path: build/deploy
   deploy:

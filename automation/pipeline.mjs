@@ -12,6 +12,8 @@ run(['work/hs300_four_etf_20261110/compile_study.mjs'],{cwd:path.resolve(vendor)
 run(['work/hs300_four_etf_20261110/validate_study.mjs'],{cwd:path.resolve(vendor),log:'study_validation.log'});
 run(['work/hs300_four_etf_20261110/attach.mjs','--data',path.resolve('build/reviewed.json'),'--out',path.resolve('build/reviewed_with_both.json')],{cwd:path.resolve(vendor)});
 run(['work/hs300_four_etf_20261110/render_study.mjs','--date',reportDate],{cwd:path.resolve(vendor)});
+const studyModel=read(vendor+'/work/hs300_four_etf_20261110/study.json'),completed=studyModel.windows.find(x=>x.horizon===250).completedCount;
+for(const n of ['hs300_four_etf_backtest.html',`hs300_four_etf_backtest_${reportDate}.html`]){const f=vendor+'/'+n;put(f,fs.readFileSync(f,'utf8').replace('事件研究48次',`事件研究${completed}次`).replace('不能当48笔',`不能当${completed}笔`));}
 const candidates=state.institutionCandidates,qs=candidates?.queries||[],candidateRows=[...new Map(qs.flatMap(q=>q.rows||[]).map(r=>[r.url,r])).values()],errors=qs.filter(q=>q.error);
 let institution=fs.readFileSync('automation/templates/institution.html','utf8').replace(/<p class="chart-note">11\/16复核公开披露：[\s\S]*?<\/p>/,'');
 institution=institution.replaceAll('本次核查 11/16','已核快照 11/16').replaceAll('本次未核到新增原始披露','截至11/16已核快照未取得数量');
@@ -36,6 +38,9 @@ if(!offline){
 run(['automation/validate.mjs',...(offline?['--offline']:[])]);
 if(offline){console.log('Offline calculation/algorithm checks passed; no state or public artifact updated.');process.exit(0);}
 state.D=read('build/reviewed_with_both.json');state.fundAsOf=end;state.lastCloudRun=process.env.GITHUB_RUN_ID||null;state.institutionConfirmedAt=state.institutionConfirmedAt;
+const ledger=state.availability,now=new Date().toISOString();
+for(const [month,rows]of Map.groupBy(state.denominator.rows,r=>r.date.slice(0,7))){const hash=sha(JSON.stringify(rows)),entry=ledger.months[month]??={firstConfirmedAt:now,revisions:[]};if(!entry.revisions.some(r=>r.sha256===hash))entry.revisions.push({sha256:hash,firstConfirmedAt:now,observationEnd:rows.at(-1).date,rows:rows.length});entry.lastCheckedAt=now;}
+ledger.lastCheckedAt=now;ledger.fundAsOf=end;ledger.denominatorAsOf=state.denominator.asOf;
 // Durable state is committed only after all validation gates. Artifacts/cache are not the sole database.
 save(state);
 const watch=`# 国家队资金数据监控（无模型云端版）\n\n报告日 ${reportDate}；资金 ${end}；分位 ${D.ratio252.ratioAsOf}；机构数量最后人工确认 ${state.institutionConfirmedAt}。\n\n纯宽基${D.quality.broad}只、政策${D.quality.policy}只。宽基当日${sg(p.flow)}亿元、5日${sg(p.flow5)}亿元、60日${sg(p.flow60)}亿元。\n\n下一验证：下一完整交易日官方份额、同日NAV、六指数和目录；拆合/目录变更/历史冲突需证据复核。分母滞后不填值；无法按账户归因。\n\n机构公告仅候选元数据检索，不自动认定交易数量；新闻分析未启用。\n`;

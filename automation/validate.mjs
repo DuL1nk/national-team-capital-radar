@@ -1,8 +1,14 @@
 import vm from 'node:vm';
-import {fs,read,assert,sha,put} from './lib.mjs';
+import {fs,read,assert,sha,put,load} from './lib.mjs';
 import {compileRatio} from './vendor/work/hs300_ratio_20261110/metric.mjs';
 const offline=process.argv.includes('--offline'),D=read('build/reviewed_with_both.json'),S=read('build/compiled_state.json'),end=S.fundAsOf,p=D.snapshots[end],H=D.productHistory;let checks=0;
 const check=(b,m)=>{assert(b,m);checks++;};
+const baseline=load().D;
+for(const key of ['ratio252','fourEtfStudy']){const current=new Map(D[key].rows.map(r=>[r.date,r]));for(const old of baseline[key].rows){const r=current.get(old.date);check(!!r,'Do not drop reviewed metric dates');for(const f of key==='ratio252'?['ratioPct','percentile','netAssetsYi','circulatingMarketCapYi']:['marketRank','navRank','marketRatioPct','navRatioPct']){
+ const newlyDisclosed=old.date>baseline[key].ratioAsOf&&old[f]===null&&old.date<=D.ratio252.denominatorAsOf;
+ if(newlyDisclosed)check(S.monthlyChecks?.some(m=>m.month===old.date.slice(0,7).replace('-','')&&m.count>0),'New monthly values require actual official retrieval');
+ else check(r[f]===old[f],'Metric history changed '+key+' '+old.date+' '+f);
+}}}
 for(let i=0;i<H.dates.length;i++)for(const[k,pool]of Object.entries(p.pools)){
  let value=0,valid=0,expected=0;for(const code of pool.codes){const h=H.products[code],d=H.dates[i],v=i>=h.start?h.flows[i-h.start]:null;if(d>h.effectiveDate)expected++;if(Number.isFinite(v)){valid++;value+=v;}}
  const r=pool.series[i];check(Math.abs(value-r[1])<.00001,'Product/pool reconciliation');check(valid===r[2]&&expected===r[3],'Coverage reconciliation');
