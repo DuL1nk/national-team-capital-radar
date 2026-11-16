@@ -10,12 +10,12 @@ export const load=()=>{const b=fs.readFileSync('automation/state/baseline.json.g
 export const save=s=>{const b=gzipSync(JSON.stringify(s),{level:9});put('automation/state/baseline.json.gz',b);const manifest=read('automation/state/manifest.json');put('automation/state/manifest.json',{...manifest,baselineSha256:sha(b),bytes:b.length,fundAsOf:s.fundAsOf,ratioAsOf:s.D.ratio252.ratioAsOf,updatedAt:new Date().toISOString()});};
 export const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 export const audit=[];
-export async function get(url,{referer='https://www.sse.com.cn/',...options}={}){
- for(let attempt=0;attempt<3;attempt++){
-  try{const r=await fetch(url,{...options,headers:{'User-Agent':'Mozilla/5.0',Referer:referer,...options.headers},signal:AbortSignal.timeout(45000)});
+export async function get(url,{referer='https://www.sse.com.cn/',timeoutMs=45000,retries=3,...options}={}){
+ for(let attempt=0;attempt<retries;attempt++){
+  try{const r=await fetch(url,{...options,headers:{'User-Agent':'Mozilla/5.0',Referer:referer,...options.headers},signal:AbortSignal.timeout(timeoutMs)});
    if([401,403,429,514].includes(r.status)){const e=Error('Access/rate response '+r.status+'; no bypass');e.noRetry=true;throw e;}
    if(!r.ok)throw Error('HTTP '+r.status);const raw=Buffer.from(await r.arrayBuffer());audit.push({url,retrievedAt:new Date().toISOString(),status:r.status,bytes:raw.length,sha256:sha(raw)});return raw;
-  }catch(e){if(attempt===2||e.noRetry)throw Error(url.split('?')[0]+': '+e.message);await sleep(1200*(attempt+1));}
+  }catch(e){if(attempt===retries-1||e.noRetry)throw Error(url.split('?')[0]+': '+e.message);await sleep(1200*(attempt+1));}
  }
 }
 export function mergeRows(old,rows,key,compare,label){const m=new Map(old.map(r=>[key(r),r]));for(const r of rows){const o=m.get(key(r));assert(!o||compare(o,r),label+' historical revision '+key(r)+'; manual evidence review required');m.set(key(r),r);}return[...m.values()].sort((a,b)=>key(a).localeCompare(key(b)));}
