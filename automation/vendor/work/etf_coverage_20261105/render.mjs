@@ -34,7 +34,7 @@ for(const reportDate of reportDates){
  const fixture=cleanPublic({
   asOf:snapshot.asOf,
   pools:{broad:{...snapshot.pools.broad,label:'纯宽基监控池'},policy:snapshot.pools.policy},
-  products:snapshot.products.filter(p=>p.tags.some(t=>t==='broad'||t==='policy')).map(p=>{const {series,...rest}=p;return{...rest,tags:p.tags.filter(t=>t==='broad'||t==='policy')};}),
+  products:snapshot.products.filter(p=>p.tags.some(t=>t==='broad'||t==='policy')&&(!p.inactiveFrom||asOf<p.inactiveFrom)).map(p=>{const {series,...rest}=p;return{...rest,tags:p.tags.filter(t=>t==='broad'||t==='policy')};}),
   reportDate,revisionDate:data.revisionDate,
   definitions:Object.fromEntries(Object.entries(data.definitions).filter(([k])=>k!=='coverage')),
   historyMethod:data.historyMethod,

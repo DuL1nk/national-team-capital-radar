@@ -1,0 +1,15 @@
+{
+  "530080": {
+    "name": "天弘上证180ETF",
+    "type": "liquidation",
+    "inactiveFrom": "2026-11-16",
+    "lastFlowDate": "2026-11-13",
+    "resolutionEffectiveDate": "2026-11-13",
+    "publishedDate": "2026-11-14",
+    "reviewedAt": "2026-11-17",
+    "source": "https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-11-14/530080_20261114_NNU7.pdf",
+    "sourceSha256": "3c14e07267da1fefb22d6ad4d7be20df8d6087ab0b4bcd92b38c011aefe3f4c7",
+    "sourcePagesReviewed": [1, 2],
+    "reason": "持有人大会终止合同/终止上市议案已通过；11/16进入清算，不再恢复交易和申赎。目录残留份额不作申赎；不前填NAV、不记为赎回，历史原值保留。"
+  }
+}

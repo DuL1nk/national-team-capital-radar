@@ -1,5 +1,6 @@
 import {spawnSync} from 'node:child_process';
 import {load,read,put,get,audit,assert,sleep,mergeRows,dateCN,addDay,sha} from './lib.mjs';
+import {reviewedLifecycle} from './lifecycle.mjs';
 const S=load(),args=process.argv.slice(2),date=args.includes('--date')?args[args.indexOf('--date')+1]:dateCN();
 process.on('uncaughtException',e=>{put('build/source_failure.json',{reportDate:date,failedAt:new Date().toISOString(),error:e.message,requestsCompleted:audit});console.error(e.stack);process.exit(1);});
 assert(/^\d{4}-\d\d-\d\d$/.test(date)&&date<=dateCN(),'Invalid report date');
@@ -18,7 +19,7 @@ const products=D.snapshots[previous].products,codes=new Set(products.map(p=>p.co
 // Current validated pool is never silently replaced by a fund-name guess.
 for(const [exchange,key,fields]of [['sse','FUND_CODE',['INDEX_NAME','LISTING_DATE','FUND_ABBR','CATEGORY']],['szse','基金代码',['基金简称','上市日期','投资类别']]]){
  const old=new Map(S.directories[exchange].rows.map(r=>[r[key],r])),fresh=new Map(directory[exchange].rows.map(r=>[r[key],r]));
- for(const [code,row]of old){if(!fresh.has(code)){directoryChanges.push({exchange,code,type:'removed'});assert(!codes.has(code),'Tracked fund removed: effective-date review required '+code);}else if(codes.has(code)){for(const f of fields)assert.equal(fresh.get(code)[f],row[f],'Tracked metadata changed: audit '+code+' '+f);}else if(fields.some(f=>fresh.get(code)[f]!==row[f])){
+ for(const [code,row]of old){const retired=reviewedLifecycle[code]?.inactiveFrom<=end;if(!fresh.has(code)){directoryChanges.push({exchange,code,type:'removed',review:retired?'official_lifecycle_reviewed':'requires_review'});assert(!codes.has(code)||retired,'Tracked fund removed: effective-date review required '+code);}else if(codes.has(code)&&!retired){for(const f of fields)assert.equal(fresh.get(code)[f],row[f],'Tracked metadata changed: audit '+code+' '+f);}else if(!codes.has(code)&&fields.some(f=>fresh.get(code)[f]!==row[f])){
   const current=fresh.get(code),text=exchange==='sse'?String(current.INDEX_NAME||'')+' '+current.FUND_ABBR:String(current['基金简称']||'');
   directoryChanges.push({exchange,code,type:'untracked_metadata_changed',name:text});
   assert(!/沪深300|中证(?:500|1000|2000|A500|A50|A100|全指|800)|上证(?:50|180|380|580|综指)|科创(?:50|100|200|综指)|创业板|深证(?:100|300|50|综指)|深成|国证2000|央企|国企|国新|诚通|中央企业|MSCI/.test(text),'Existing excluded product may have transformed into scope: audit '+code+' '+text);
@@ -30,12 +31,13 @@ for(const [exchange,key,fields]of [['sse','FUND_CODE',['INDEX_NAME','LISTING_DAT
   assert(!broad,'New broad/policy candidate needs index/effective-date classification '+code+' '+text);
  }
 }
-put('build/directory_audit.json',{reportDate:date,changes:directoryChanges,tracked:products.length});
+S.lifecycleReview=reviewedLifecycle;
+put('build/directory_audit.json',{reportDate:date,changes:directoryChanges,historicalTracked:products.length,activeTracked:products.filter(p=>!(reviewedLifecycle[p.code]?.inactiveFrom<=end)).length,reviewedLifecycle});
 const share=(d,c,n)=>{if(!codes.has(c))return;const old=S.shares[c][d];assert(old===undefined||Math.abs(old-n)<.11,'Official share historical revision '+c+' '+d);S.shares[c][d]=n;};
 for(const d of newDates){const raw=await get('https://query.sse.com.cn/commonQuery.do?'+new URLSearchParams({isPagination:'true','pageHelp.pageSize':'10000','pageHelp.pageNo':'1',sqlId:'COMMON_SSE_ZQPZ_ETFZL_XXPL_ETFGM_SEARCH_L',STAT_DATE:d})),j=JSON.parse(raw);assert.equal(j.result.length,Number(j.pageHelp.total));assert(j.result.length>500,'Empty/stale SSE date '+d);const seen=new Set();for(const r of j.result){assert.equal(r.STAT_DATE,d);assert(!seen.has(r.SEC_CODE));seen.add(r.SEC_CODE);const n=Number(r.TOT_VOL)*10000;assert(Number.isFinite(n)&&n>=0);share(d,r.SEC_CODE,n);}put('build/raw/sse_'+d+'.json',j);await sleep(250);}
 for(const [key,j]of Object.entries(sz))if(key.startsWith('shares_'))for(const[d,c,n]of j.rows)share(d,c,n);
 const missingMarket=[],fourCodes=['510300','510310','510330','159919'];let done=0;
-for(const p of products){const code=p.code,raw=await get('https://fund.eastmoney.com/pingzhongdata/'+code+'.js',{referer:'https://fund.eastmoney.com/'}),m=raw.toString().match(/var Data_netWorthTrend\s*=\s*(\[[\s\S]*?\]);/);assert(m,'NAV missing '+code);
+for(const p of products){const code=p.code;if(reviewedLifecycle[code]?.inactiveFrom<=end){done++;continue;}const raw=await get('https://fund.eastmoney.com/pingzhongdata/'+code+'.js',{referer:'https://fund.eastmoney.com/'}),m=raw.toString().match(/var Data_netWorthTrend\s*=\s*(\[[\s\S]*?\]);/);assert(m,'NAV missing '+code);
  const rows=JSON.parse(m[1]).map(x=>({date:new Date(Number(x.x)+28800000).toISOString().slice(0,10),nav:Number(x.y),returnPct:Number(x.equityReturn),event:String(x.unitMoney||'')})).filter(x=>x.date<=end&&x.date>=(S.nav[code][0]?.date||p.listingDate));assert(rows.length&&rows.every(x=>x.nav>0)&&new Set(rows.map(x=>x.date)).size===rows.length,'Invalid NAV '+code);
  S.nav[code]=mergeRows(S.nav[code],rows,x=>x.date,(a,b)=>a.nav===b.nav,'NAV '+code);
  try{
@@ -66,5 +68,5 @@ for(const keyword of ['中央汇金','汇金资产','中国证券金融','国新
  catch(e){institution.queries.push({keyword,error:e.message});}await sleep(300);
 }
 S.institutionCandidates=institution;
-put('build/source_audit.json',{reportDate:date,fundAsOf:end,previousFundAsOf:previous,executedAt:S.collectedAt,runner:process.env.GITHUB_ACTIONS==='true'?'github-hosted':'local',requests:audit,szse:read('build/raw/szse_audit.json'),monthly,marketGaps:missingMarket,institution});
+put('build/source_audit.json',{reportDate:date,fundAsOf:end,previousFundAsOf:previous,executedAt:S.collectedAt,runner:process.env.GITHUB_ACTIONS==='true'?'github-hosted':'local',requests:audit,szse:read('build/raw/szse_audit.json'),monthly,marketGaps:missingMarket,institution,reviewedLifecycle});
 put('build/collected.json',S);console.log(JSON.stringify({reportDate:date,fundAsOf:end,products:products.length,requests:audit.length,marketGaps:missingMarket.length,denominatorAsOf:S.denominator.asOf}));

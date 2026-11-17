@@ -11,9 +11,10 @@ for(const key of ['ratio252','fourEtfStudy']){const current=new Map(D[key].rows.
  else check(r[f]===old[f],'Metric history changed '+key+' '+old.date+' '+f);
 }}}
 for(let i=0;i<H.dates.length;i++)for(const[k,pool]of Object.entries(p.pools)){
- let value=0,valid=0,expected=0;for(const code of pool.codes){const h=H.products[code],d=H.dates[i],v=i>=h.start?h.flows[i-h.start]:null;if(d>h.effectiveDate)expected++;if(Number.isFinite(v)){valid++;value+=v;}}
+ let value=0,valid=0,expected=0;for(const code of pool.codes){const h=H.products[code],d=H.dates[i],v=i>=h.start?h.flows[i-h.start]:null;if(d>h.effectiveDate&&(!h.inactiveFrom||d<h.inactiveFrom))expected++;if(Number.isFinite(v)){valid++;value+=v;}}
  const r=pool.series[i];check(Math.abs(value-r[1])<.00001,'Product/pool reconciliation');check(valid===r[2]&&expected===r[3],'Coverage reconciliation');
 }
+for(const [code,h]of Object.entries(H.products))if(h.inactiveFrom){for(let i=0;i<H.dates.length;i++)if(H.dates[i]>=h.inactiveFrom)check(h.flows[i-h.start]===null,'Inactive flow must remain null, not zero or liquidation redemption');check(!p.products.find(x=>x.code===code)?.flow,'No inactive current flow');}
 check(Object.keys(D.indices).join(',')==='sh,cy,star50,hs300,zz500,zz1000','Six index order');for(const x of Object.values(D.indices)){check(x.rows.at(-1)[0]===end,'Index cutoff');check(x.rows.every(r=>r[0]<=end&&r[1]>0),'Index observations');}
 const r=D.ratio252;check(r.lookback===252&&!r.lookbackIncludesCurrent&&r.tieMethod==='midrank','Original full rank definition');for(let i=0;i<r.rows.length;i++){const x=r.rows[i];if(x.date>r.denominatorAsOf)check(x.ratioPct===null&&x.percentile===null,'Unpublished denominator gap');if(Number.isFinite(x.percentile)){check(x.lookbackCount===252,'Full warmup');const prev=r.rows.slice(i-252,i);let lower=0,equal=0;for(const v of prev){check(Number.isFinite(v.ratioPct),'No compressed missing dates');if(Math.abs(v.ratioPct-x.ratioPct)<=1e-12)equal++;else if(v.ratioPct<x.ratioPct)lower++;}check(Math.abs(x.percentile-(lower+.5*equal)/252*100)<1e-10,'Full-direction rank recomputation');}}
 const html=fs.readFileSync('build/national_team_capital_monitor_'+S.reportDate+'.html','utf8');
