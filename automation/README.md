@@ -1,6 +1,6 @@
 # Cloud data pipeline (no model)
 
-Active since 2026-11-16. Run [43803248291](https://github.com/DuL1nk/national-team-capital-radar/actions/runs/43803248291) completed real cloud collection, validation, durable-state commit, Pages deployment, and anonymous date/SHA checks of all historical/research HTML. Scheduled start 09:15 Asia/Shanghai (UTC 01:15), recovery 11:45 (UTC 03:45); a matching already-published daily report is skipped. The former local `09-15` writer is paused. The industry-research task is not changed.
+Active since 2026-11-16. Run [43803248291](https://github.com/DuL1nk/national-team-capital-radar/actions/runs/43803248291) completed real cloud collection, validation, durable-state commit, Pages deployment, and anonymous date/SHA checks of all historical/research HTML. Scheduled start 09:15 Asia/Shanghai (UTC 01:15), recovery 09:47, 10:47 and 11:45; a matching already-published daily report is skipped before collection dependencies are installed. The former local `09-15` writer is paused. The industry-research task is not changed. See [SCHEDULING.md](SCHEDULING.md) for the 11/17 missed-delivery investigation, testable guard and best-effort limitation.
 
 This directory contains a deliberately selected public-data pipeline, not a copy of the desktop workspace. No personal GitHub credentials, model credentials, account data, browser state, or private watchlist are required by the cloud job. `GITHUB_TOKEN` is used only by the commit/deploy steps with job-scoped permissions.
 

@@ -1,7 +1,9 @@
 name: Daily data refresh
+run-name: Daily data refresh · ${{ github.event_name }} · ${{ github.run_number }}
 on:
   schedule:
     - cron: '15 1 * * *' # 09:15 Asia/Shanghai
+    - cron: '47 1,2 * * *' # 09:47 / 10:47 retry after delayed/dropped delivery
     - cron: '45 3 * * *' # 11:45 recovery; skip if today's anonymous hash matches
   workflow_dispatch:
     inputs:
@@ -9,7 +11,8 @@ on:
         description: 'Publish only after validation (false for first cloud trial)'
         type: boolean
         default: false
-# Enabled after successful real collection, deployment and anonymous verification.
+# GitHub schedules are best effort. Staggered retries share the same serial,
+# fail-closed publisher; a verified current report skips all expensive work.
 concurrency:
   group: national-team-data-refresh
   cancel-in-progress: false
@@ -33,10 +36,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: pip install -r automation/requirements.txt
+      - name: Record trigger receipt and check recovery guard
+        env:
+          TRIGGER_EVENT: ${{ github.event_name }}
+          TRIGGER_SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          node automation/test-freshness.mjs
+          node -e 'const f=require("node:fs"); f.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Trigger receipt\n\nEvent: " + process.env.TRIGGER_EVENT + "\n\nSchedule (UTC): " + (process.env.TRIGGER_SCHEDULE || "manual") + "\n\nRunner started: " + new Date().toISOString() + "\n\nRetries: 09:15 / 09:47 / 10:47 / 11:45 Asia/Shanghai. A missing schedule run has no runner receipt.\n");'
       - name: Select publication mode
         id: mode
         env:
@@ -45,6 +51,12 @@ jobs:
       - name: Avoid duplicate successful daily publication
         id: freshness
         run: node automation/should-run.mjs
+      - uses: actions/setup-python@v5
+        if: steps.freshness.outputs.run == 'true'
+        with:
+          python-version: '3.12'
+      - run: pip install -r automation/requirements.txt
+        if: steps.freshness.outputs.run == 'true'
       - name: Fetch, calculate and validate (no model)
         if: steps.freshness.outputs.run == 'true'
         run: node automation/pipeline.mjs
@@ -52,7 +64,7 @@ jobs:
         if: steps.freshness.outputs.run == 'true'
         run: node automation/package.mjs
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.freshness.outputs.run == 'true'
         with:
           name: data-audit-${{ github.run_id }}
           path: |
