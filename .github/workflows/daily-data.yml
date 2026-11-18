@@ -5,6 +5,7 @@ on:
     - cron: '15 1 * * *' # 09:15 Asia/Shanghai
     - cron: '47 1,2 * * *' # 09:47 / 10:47 retry after delayed/dropped delivery
     - cron: '45 3 * * *' # 11:45 recovery; skip if today's anonymous hash matches
+    - cron: '23 1-15 * * *' # 09:23-23:23 Asia/Shanghai: hourly stale-report recovery
   workflow_dispatch:
     inputs:
       publish:
@@ -42,7 +43,7 @@ jobs:
           TRIGGER_SCHEDULE: ${{ github.event.schedule }}
         run: |
           node automation/test-freshness.mjs
-          node -e 'const f=require("node:fs"); f.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Trigger receipt\n\nEvent: " + process.env.TRIGGER_EVENT + "\n\nSchedule (UTC): " + (process.env.TRIGGER_SCHEDULE || "manual") + "\n\nRunner started: " + new Date().toISOString() + "\n\nRetries: 09:15 / 09:47 / 10:47 / 11:45 Asia/Shanghai. A missing schedule run has no runner receipt.\n");'
+          node -e 'const f=require("node:fs"); f.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Trigger receipt\n\nEvent: " + process.env.TRIGGER_EVENT + "\n\nSchedule (UTC): " + (process.env.TRIGGER_SCHEDULE || "manual") + "\n\nRunner started: " + new Date().toISOString() + "\n\nPrimary/retries: 09:15 / 09:47 / 10:47 / 11:45; hourly stale-report recovery: 09:23-23:23 Asia/Shanghai. Anonymous current date/hash skips duplicate work. All deliveries remain best effort. A missing schedule run has no runner receipt.\n");'
       - name: Select publication mode
         id: mode
         env:

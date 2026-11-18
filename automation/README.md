@@ -2,6 +2,8 @@
 
 Active since 2026-11-16. Run [43803248291](https://github.com/DuL1nk/national-team-capital-radar/actions/runs/43803248291) completed real cloud collection, validation, durable-state commit, Pages deployment, and anonymous date/SHA checks of all historical/research HTML. Scheduled start 09:15 Asia/Shanghai (UTC 01:15), recovery 09:47, 10:47 and 11:45; a matching already-published daily report is skipped before collection dependencies are installed. The former local `09-15` writer is paused. The industry-research task is not changed. See [SCHEDULING.md](SCHEDULING.md) for the 11/17 missed-delivery investigation, testable guard and best-effort limitation.
 
+Since 11/18 the same workflow also checks hourly at 09:23-23:23 Beijing until today's anonymous report date/hash is verified. This extends recovery beyond the morning after an 11/17 `schedule` delivery arrived at 20:28 (its configured time was 11:45). It is still best effort; a 19-second successful skip is not proof that a new day's data was automatically refreshed. There is still one serial, fail-closed publisher and one fixed URL.
+
 This directory contains a deliberately selected public-data pipeline, not a copy of the desktop workspace. No personal GitHub credentials, model credentials, account data, browser state, or private watchlist are required by the cloud job. `GITHUB_TOKEN` is used only by the commit/deploy steps with job-scoped permissions.
 
 Run `node automation/pipeline.mjs --offline` for audited-baseline calculation checks (never publishes), or `node automation/pipeline.mjs` for actual current public collection. The Actions workflow is `daily-data.yml`; manual runs default to a non-publishing cloud trial.
