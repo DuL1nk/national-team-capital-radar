@@ -1,7 +1,7 @@
 # Cloud data pipeline (no model)
 
 11/20 repair: bounded official-share readiness retries (2/4/8 minutes), automatic
-report-window guard, separate same-platform hourly/completion watchdog, automatic
+report-window guard, separate same-platform hourly watchdog and publisher final health job, automatic
 repository failure Issue and live report-health banner. See SCHEDULING.md. There
 is still one publisher, one fixed URL, no zero filling and no private credential
 in the pipeline. This is not a cross-platform scheduler or an on-time SLA.

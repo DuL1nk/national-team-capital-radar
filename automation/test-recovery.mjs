@@ -15,6 +15,8 @@ check(recoveryDecision(f).dispatch,true);
 check(recoveryDecision({...f,publicDecision:{run:false}}).reason,'public-current-verified');
 check(recoveryDecision({...f,now:new Date('2026-11-19T18:23:00Z')}).reason,'outside-report-window');
 for(const status of ['queued','in_progress','waiting','requested','pending'])check(recoveryDecision({...f,runs:[{id:1,status}]}).reason,'publisher-already-active');
+check(recoveryDecision({...f,finishedRunId:'1',runs:[{id:1,status:'in_progress',created_at:'2026-11-20T01:00:00Z'}]}).dispatch,true);
+check(recoveryDecision({...f,finishedRunId:'1',runs:[{id:1,status:'in_progress',created_at:'2026-11-20T01:00:00Z'},{id:2,status:'queued',created_at:'2026-11-20T01:00:00Z'}]}).reason,'publisher-already-active');
 const old={created_at:'2026-11-18T02:00:00Z',status:'completed',event:'workflow_dispatch',display_title:'Daily data refresh · watchdog · 1'},today={...old,created_at:'2026-11-20T01:00:00Z'};
 check(recoveryDecision({...f,runs:[old,old,old]}).dispatch,true);
 check(recoveryDecision({...f,runs:[today,today,today]}).reason,'watchdog-daily-dispatch-limit');

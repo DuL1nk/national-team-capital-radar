@@ -27,7 +27,7 @@ jobs:
   build:
     if: github.repository == 'DuL1nk/national-team-capital-radar'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 75 # 34m observed collection + up to 14m source-readiness backoff + safety margin
     permissions:
       contents: write
       pages: read
@@ -136,4 +136,35 @@ jobs:
         with:
           name: public-verification-${{ github.run_id }}
           path: build/public-verification.json
+          retention-days: 14
+  health:
+    name: Final health and bounded recovery
+    needs: [build, deploy]
+    if: always() && github.repository == 'DuL1nk/national-team-capital-radar'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node automation/test-recovery.mjs
+      - name: Verify public state and finalize automatic alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECOVERY_FINISHED_RUN: ${{ github.run_id }}
+          PUBLISHER_RESULT: ${{ needs.build.result }}/${{ needs.deploy.result }}
+        run: node automation/watchdog.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: health-${{ github.run_id }}
+          path: build/watchdog.json
           retention-days: 14

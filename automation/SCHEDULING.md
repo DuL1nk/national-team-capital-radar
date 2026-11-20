@@ -13,12 +13,19 @@ Compilation correctly stopped and Pages retained report 11/19 / funds 11/18.
   fetches total). Lifecycle exits and pre-listing dates are excluded; no missing
   value is filled with zero. Access-denial/rate-limit, unknown events, directory
   changes and historical revisions are not bypassed. Exhaustion fails closed.
+  The build timeout is 75 minutes: the real 11/20 successful build took 34m18s,
+  so a 50-minute cap left almost no buffer for the bounded 14-minute readiness
+  wait and network variation. This changes the safety budget, not data rules.
 - `data-watchdog.yml` independently checks the public date AND homepage SHA at
-  09:37–23:37 hourly, and on completion of the publisher. If stale and no publisher
+  09:37–23:37 hourly. The publisher also has its own `always()` final health job,
+  after both build and deploy finish, avoiding dependence on a separate completion
+  webhook delivery (not observed after the real 11/20 run). If stale and no publisher
   is active, it dispatches the same serial `daily-data.yml` with `recovery=true`.
   At most three watchdog dispatches per Beijing day prevent recursive chains;
   normal scheduled attempts retain their own guard. This is a separate workflow
   on the SAME GitHub platform, not an independent external scheduling service.
+  Only that final job may ignore its own already-finished publisher stages when
+  checking active work; any other live publisher still blocks duplicate dispatch.
 - The watchdog maintains one bot-created repository Issue on failure and closes
   it after anonymous current-date/hash verification. GitHub native notification
   settings control delivery; the workflow does not configure email recipients.

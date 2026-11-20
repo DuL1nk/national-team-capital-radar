@@ -2,9 +2,6 @@ name: Data freshness watchdog
 on:
   schedule:
     - cron: '37 1-15 * * *' # hourly 09:37-23:37 Beijing, separate schedule
-  workflow_run:
-    workflows: ['Daily data refresh']
-    types: [completed]
   workflow_dispatch:
 permissions:
   contents: read
