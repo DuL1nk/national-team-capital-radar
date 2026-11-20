@@ -27,6 +27,14 @@ unknown formats, scanned documents, partial coverage and source failures remain
 visible. Access/rate denial stops that provider for the attempt. No-match is not
 zero trading and the discovery scope is not a complete public-account ledger.
 Unknown formats require evidence/rule review, not an automatic invented number.
+Anonymous UI acceptance also detected differing all-market pagination membership
+between local and hosted runs despite equal reported totals. Therefore known
+baseline/watch holdings and newly matched institutions' issuers are queried
+individually by security code each attempt, validating every returned secCode.
+Verified original documents seed the initial remediation; they are not a
+substitute for subsequent dated targeted discovery. All-market discovery is
+explicitly non-exhaustive. Allocation/greenshoe/registration titles are included
+as candidates, not automatically treated as completed purchases.
 
 Partial retrieval/queue coverage opens or retains the same repository warning
 Issue and retries after the bounded interval; supported new facts may publish

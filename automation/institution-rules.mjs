@@ -1,5 +1,5 @@
 // Exact legal identities only; similar names (CICC/HKSCC/etc.) are not aliases.
-export const parserVersion='2026-11-20.2';
+export const parserVersion='2026-11-20.3';
 export const entities=[
  {id:'huijin',group:'中央汇金',type:'稳市/国有金融资本',names:['中央汇金投资有限责任公司']},
  {id:'huijin_am',group:'汇金资管',type:'稳市',names:['中央汇金资产管理有限责任公司']},
@@ -12,7 +12,7 @@ export const entities=[
  {id:'icf',group:'国家大基金',type:'产业政策资金',names:['国家集成电路产业投资基金股份有限公司','国家集成电路产业投资基金二期股份有限公司','国家集成电路产业投资基金三期股份有限公司']}
 ];
 export const discoveryWords=['中央汇金','汇金资产','中国证券金融','国新投资','国新宏盛','国新产业资本','诚通','全国社保','基本养老','梧桐树','国家集成电路'];
-export const relevantTitle=/权益变动|增持|减持|持股|股东.{0,12}(?:名册|情况|变动)|前十(?:大|名)|前10|(?:年度|半年度|季度)报告(?!摘要)/;
+export const relevantTitle=/权益变动|增持|减持|持股|股东.{0,12}(?:名册|情况|变动)|前十(?:大|名)|前10|配售|超额|发行结果|股份登记|(?:年度|半年度|季度)报告(?!摘要)/;
 export const normalize=s=>String(s).replace(/[\s\u3000]+/g,'').replaceAll('(','（').replaceAll(')','）');
 export const relationships={
  '国新产业资本管理有限公司':{label:'中国国新全资主体（报告第5页）',source:'https://static.cninfo.com.cn/finalpage/2026-10-28/1225628730.PDF',disclosureDate:'2026-10-28'},
@@ -47,7 +47,7 @@ export function parseInstitutionDocument(doc,text){
    const block=text.split(/(?:^|\n)\s*二[、．.]\s*(?:公司)?前十/)[0];
    const b=normalize(block),dated=b.match(/即(20\d{2})年(\d{1,2})月(\d{1,2})日/)||b.match(/股权登记日（(20\d{2})年(\d{1,2})月(\d{1,2})日）登记在册/),q=t.slice(0,350).match(/(20\d{2})年(?:第([一三])季度|半年度|年度)报告/),quarter=q?q[1]+(q[2]==='一'?'-03-31':q[2]==='三'?'-09-30':q[0].includes('半年度')?'-06-30':'-12-31'):null;
    const qdate=dated?date(dated[1],dated[2],dated[3]):quarter;
-   const registerHeader=/(?:前十大股东持股情况|前10名股东持股情况)/.test(b)||/回购/.test(doc.title||'')&&/前十大股东/.test(doc.title||'')&&/登记在册的前十大股东/.test(b)&&/持有人名称/.test(b)&&/占(?:公司)?总股本比.{0,35}例（%）/.test(b);
+   const registerHeader=/(?:前十[大名]股东持股情况|前10名股东持股情况)/.test(b)||/回购/.test(doc.title||'')&&/前十[大名]股东/.test(doc.title||'')&&/登记在册的前十[大名]股东/.test(b)&&/(?:持有人名称|股东名称)/.test(b)&&/(?:占(?:公司)?总股本比例.{0,35}（%）|占(?:公司)?总股本比.{0,35}例（%）)/.test(b);
    // PDF columns may interleave the ratio header between 数量 and its 股 unit.
    // The bounded header bridge still requires 股, never 万股/市值/金额.
    if(qdate&&qdate<=doc.disclosureDate&&registerHeader&&/持股数量.{0,35}（股）|单位[：:]股/.test(b)){

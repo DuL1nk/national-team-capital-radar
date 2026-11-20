@@ -29,4 +29,7 @@ const ssf=parseInstitutionDocument({...doc('1225678061','688025','2026-11-19'),i
 ck(ssf.records.length,1);ck(ssf.records[0].shares,2650000);ck(ssf.records[0].asOf,'2026-11-16');ck(ssf.records[0].kind,'holding');
 const pen=parseInstitutionDocument({...doc('1225670552','688433','2026-11-14'),issuer:'华曙高科',title:'关于回购股份事项前十大股东和前十大无限售条件股东持股情况的公告'},read('688433_register'));
 ck(pen.records.length,1);ck(pen.records[0].shares,5960503);ck(pen.records[0].asOf,'2026-11-11');ck(pen.records[0].kind,'holding');
+const st=parseInstitutionDocument({...doc('1225679296','600711','2026-11-20'),issuer:'盛屯矿业',title:'关于回购股份事项前十名股东和前十名无限售条件股东持股情况的公告'},read('600711_register'));
+ck(st.records.length,2);ck(st.records.map(r=>r.shares),[55880429,24419193]);ck(st.records.every(r=>r.asOf==='2026-11-16'&&r.kind==='holding'),true);ck(st.pending,false);
+ck(parseInstitutionDocument({...doc('1225678061','688025','2026-11-19')},read('688025_register').replaceAll('（股）','（万股）')).records.length,0);
 console.log(JSON.stringify({status:'passed',checks,fixtures:'Official PDF text; no synthetic fixture published'}));
