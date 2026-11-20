@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {load,read,put,get,audit,assert,sleep,mergeRows,dateCN,addDay,sha} from './lib.mjs';
 import {reviewedLifecycle} from './lifecycle.mjs';
 import {awaitSzseShares} from './readiness.mjs';
+import {refreshDisclosures} from './disclosures.mjs';
 const S=load(),args=process.argv.slice(2),date=args.includes('--date')?args[args.indexOf('--date')+1]:dateCN();
 process.on('uncaughtException',e=>{put('build/source_failure.json',{reportDate:date,failedAt:new Date().toISOString(),error:e.message,requestsCompleted:audit});console.error(e.stack);process.exit(1);});
 assert(/^\d{4}-\d\d-\d\d$/.test(date)&&date<=dateCN(),'Invalid report date');
@@ -57,22 +58,7 @@ for(const p of products){const code=p.code;if(reviewedLifecycle[code]?.inactiveF
  }
  if(++done%40===0)console.log('NAV/market '+done+'/'+products.length);await sleep(220);
 }
-// Monthly observations may legitimately be absent. An HTTP failure is not absence.
-const before=new Date(end+'T00:00:00Z');before.setUTCDate(1);before.setUTCMonth(before.getUTCMonth()-1);
-const months=new Set([end.slice(0,7).replace('-',''),before.toISOString().slice(0,7).replace('-',''),...(S.denominator.missingMonths||[])]),monthly=[];
-for(const month of [...months].sort()){
- const raw=await get('https://query.sse.com.cn/commonQuery.do?'+new URLSearchParams({sqlId:'COMMON_SSE_ZQZS_M_CSI300_INDEX_C',isPagination:'false',MDATE:month})),j=JSON.parse(raw);assert(Array.isArray(j.result),'Monthly schema');monthly.push({month,count:j.result.length});
- const rs=j.result.map(r=>({date:r.MDATE.slice(0,4)+'-'+r.MDATE.slice(4,6)+'-'+r.MDATE.slice(6,8),circulatingMarketCapYi:Number(r.CPT_NGT),circulatingSharesYi:Number(r.NGT_VOL),close:Number(r.CLS),sourceType:'official_monthly_json',source:audit.at(-1).url,sourceMonth:month})).filter(r=>r.date<=end);assert(rs.every(r=>r.circulatingMarketCapYi>0&&r.close>0));
- S.denominator.rows=mergeRows(S.denominator.rows,rs,r=>r.date,(a,b)=>a.circulatingMarketCapYi===b.circulatingMarketCapYi,'Official monthly denominator');await sleep(220);
-}
-S.denominator.missingMonths=monthly.filter(x=>x.count===0).map(x=>x.month);S.denominator.asOf=S.denominator.rows.at(-1).date;S.denominator.requestedAsOf=end;S.denominator.retrievedAt=new Date().toISOString();
-S.directories=directory;S.fundAsOf=end;S.reportDate=date;S.collectedAt=new Date().toISOString();S.newDates=newDates;S.marketGaps=missingMarket;S.monthlyChecks=monthly;
-// Only announcement metadata candidates: never auto-promote into confirmed trades.
-const institution={checkedAt:new Date().toISOString(),from:addDay(date,-2),through:date,queries:[],status:'metadata_candidates_only_no_quantity_confirmation'};
-for(const keyword of ['中央汇金','汇金资产','中国证券金融','国新投资','诚通','全国社保','基本养老','梧桐树','国家集成电路','国新宏盛','国新产业资本']){
- try{const raw=await get('https://www.cninfo.com.cn/new/hisAnnouncement/query',{referer:'https://www.cninfo.com.cn/',timeoutMs:15000,retries:1,method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({pageNum:'1',pageSize:'30',column:'szse',tabName:'fulltext',stock:'',searchkey:keyword,seDate:institution.from+'~'+date,sortName:'',sortType:'',isHLtitle:'true'})}),j=JSON.parse(raw);assert(Array.isArray(j.announcements)||j.announcements===null,'Announcement schema');institution.queries.push({keyword,total:j.totalAnnouncement,hasMore:j.hasMore,rows:(j.announcements||[]).map(x=>({code:x.secCode,title:String(x.announcementTitle).replace(/<[^>]*>/g,''),date:new Date(x.announcementTime).toISOString().slice(0,10),url:'https://static.cninfo.com.cn/'+x.adjunctUrl}))});}
- catch(e){institution.queries.push({keyword,error:e.message});}await sleep(300);
-}
-S.institutionCandidates=institution;
-put('build/source_audit.json',{reportDate:date,fundAsOf:end,previousFundAsOf:previous,executedAt:S.collectedAt,runner:process.env.GITHUB_ACTIONS==='true'?'github-hosted':'local',requests:audit,szse:read('build/raw/szse_audit.json'),monthly,marketGaps:missingMarket,institution,reviewedLifecycle});
+S.directories=directory;S.fundAsOf=end;S.reportDate=date;S.collectedAt=new Date().toISOString();S.newDates=newDates;S.marketGaps=missingMarket;
+await refreshDisclosures(S,{reportDate:date});
+put('build/source_audit.json',{reportDate:date,fundAsOf:end,previousFundAsOf:previous,executedAt:S.collectedAt,disclosureCheckedAt:S.disclosureCheckedAt,runner:process.env.GITHUB_ACTIONS==='true'?'github-hosted':'local',requests:audit,szse:read('build/raw/szse_audit.json'),monthly:S.monthlyChecks,marketGaps:missingMarket,institution:S.disclosureAudit.institution,reviewedLifecycle});
 put('build/collected.json',S);console.log(JSON.stringify({reportDate:date,fundAsOf:end,products:products.length,requests:audit.length,marketGaps:missingMarket.length,denominatorAsOf:S.denominator.asOf}));

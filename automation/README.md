@@ -1,5 +1,14 @@
 # Cloud data pipeline (no model)
 
+11/20 disclosure fix: daily full refresh and due hourly lightweight refresh now
+actually recheck official monthly HS300 denominators and institution PDF bodies.
+`site-status.json` separates `ratio_as_of` from `ratio_checked_at`, and exposes
+`institution_checked_at`, latest confirmed disclosure, pending count and partial
+status. A manual 11/16 baseline is no longer presented as a current check. Use
+`node automation/pipeline.mjs --disclosures-only --preview` locally for a real-source
+non-publishing preview; `--preview` is rejected on Actions and never saves durable
+state or copies staged pages into the publication root.
+
 11/20 repair: bounded official-share readiness retries (2/4/8 minutes), automatic
 report-window guard, separate same-platform hourly watchdog and publisher final health job, automatic
 repository failure Issue and live report-health banner. See SCHEDULING.md. There
@@ -25,7 +34,7 @@ The original calculation/chart/research code is under `vendor/` so metric defini
 - Actual official SSE/SZSE directories and share observations; public NAV and unadjusted prices (B-grade aggregates). SZSE Python transport uses the official fund host, with the same official report on the www host only after a connection failure. No alternate transport is used after an access-denial/rate-limit response.
 - New/unclassified broad/policy candidates require evidence review instead of a name-only addition. Excluded unrelated new products are recorded. Tracked exits/transformations/renames halt for review. Thus unattended publication is fail-closed, not a guarantee of a new report every day regardless of source quality.
 - Officially reviewed lifecycle events live in `lifecycle.json` with effective dates, original URLs and PDF SHA-256. For 530080, the 11/14 resolution makes liquidation effective 11/16: stop eligibility on that date, retain earlier real history, never fill NAV or convert liquidation into redemption. Current tables contain only active products; aggregate history retains the dated exited product. Unknown events and unrelated missing NAV still halt publication.
-- Institution confirmed quantities remain the explicitly dated human-reviewed snapshot. New CNINFO title metadata is a C-grade candidate list, not an automatically confirmed trade. Queries are not full-text exhaustive. Failures are visible. News/causal commentary and model calls are disabled.
+- Institution baseline quantities preserve original dates. New official CNINFO PDF quantities are accepted only by explicit entity/date/unit rules: completed trades need a dated transaction sentence and matching holding sentence; dated shareholder-register holdings can generate a visible net change, never gross buys/sells. Plans are not executions. Exact identities, original document hashes and group relationship citations are retained. Other formats and scanned PDFs are pending review. Daily catalogue/title+keyword discovery is not full-text exhaustive and cannot establish all-account totals. Partial coverage and failures are visible. News/causal commentary and model calls remain disabled.
 - Full-direction HS300 ratio and fixed-four comparison retain different rank algorithms. Monthly disclosure lag, historical non-PIT and surviving-universe bias remain visible. No trading instructions.
 - Data cutoff uses the latest completed index date before the Beijing report day; no intraday/current-day observations enter morning reports. Holiday/weekend runs may recheck the same trade cutoff.
 - On publish success the bot commits durable state and date archives, then deploys only static artifacts to the same Pages URL and anonymously checks dates and SHA-256. Collection/validation failure never deploys; a deployment/verification failure is a failed Actions run and must not be described as successful synchronization.

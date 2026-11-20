@@ -1,7 +1,7 @@
 import {reportWindow} from './readiness.mjs';
 export function recoveryDecision({now=new Date(),reportDate,publicDecision,runs,finishedRunId}){
  if(!reportWindow(now))return {dispatch:false,reason:'outside-report-window'};
- if(!publicDecision.run)return {dispatch:false,reason:'public-current-verified'};
+ if(!publicDecision.run)return {dispatch:false,reason:publicDecision.disclosureStatus==='partial'?'disclosure-check-partial-waiting-retry':'public-current-verified'};
  const live=runs.filter(r=>String(r.id)!==String(finishedRunId??'')&&['queued','in_progress','waiting','requested','pending'].includes(r.status));
  if(live.length)return {dispatch:false,reason:'publisher-already-active',run:live[0].id};
  const today=runs.filter(r=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai'}).format(new Date(r.created_at))===reportDate);

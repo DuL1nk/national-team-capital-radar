@@ -11,7 +11,7 @@ const CapitalRatioPanel=(()=>{
   const $=id=>document.getElementById(id),mode=()=>$('fourRatioBasis')?.value||'market';let state=null;
   function render(s){
    state=s;const end=s.bins.at(-1).end,choice=$('ratioOverlaySeries')?.value||'all',cutoff=choice==='four'&&F?F.ratioAsOf:D.ratioAsOf,lag=D.rows.filter(r=>r.date>cutoff&&r.date<=end).length;
-   if($('ratioFreshness')){$('ratioFreshness').textContent='资金截至 '+end+' · 分位截至 '+cutoff+(lag?'（滞后'+lag+'交易日，后段留空）':'');$('ratioFreshness').classList.toggle('late',lag>0);}
+   if($('ratioFreshness')){$('ratioFreshness').textContent='资金截至 '+end+' · 分位截至 '+cutoff+(lag?'（滞后'+lag+'交易日，后段留空）':'')+(D.retrievedAt?' · 官方来源核查 '+new Date(D.retrievedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'');$('ratioFreshness').classList.toggle('late',lag>0);}
    if($('ratioLatestSnapshot')){const a=D.rows.findLast(r=>r.date<=end&&Number.isFinite(r.percentile)),b=F?.rows.findLast(r=>r.date<=end&&Number.isFinite(r[mode()==='nav'?'navRank':'marketRank']));$('ratioLatestSnapshot').textContent='最近已核：'+(a?'全方向 '+fmt(a.percentile)+'%（'+a.date+'）':'全方向尚无完整分位')+(b?'；四只 '+fmt(b[mode()==='nav'?'navRank':'marketRank']*100)+'%（'+b.date+'，'+(mode()==='nav'?'NAV':'市价')+'）':'')+'。最新缺口不沿用该值。';}
   }
   $('fourRatioBasis')?.addEventListener('change',()=>onChange?.());

@@ -1,5 +1,40 @@
 # Schedule delivery and recovery
 
+## 2026-11-20 ratio and institution disclosure checks
+
+The report date alone no longer suppresses disclosure checks. Once today's
+homepage date and SHA match, a missing or ≥1-hour-old `disclosure_checked_at`
+selects `--disclosures-only` in the SAME serial publisher. It rechecks SSE
+current/prior/missing monthly denominator releases and CNINFO daily announcement
+catalogues, then downloads candidate original PDFs and applies strict identity,
+date and unit rules. It does not re-download five years of ETF data. Existing
+morning/hourly triggers and the same-platform watchdog are reused; no Cloudflare,
+second publishing workflow or model service is introduced. Manual recovery can
+request `publish=true, disclosures_only=true`.
+
+The denominator **data date** can legitimately remain 2026-10-30 when the official
+November response is empty; the page shows its actual **check time** separately.
+No forward fill or index-return proxy is allowed. Institution 2026-11-16 was a
+manual baseline, not the latest possible disclosure. The new PDF checks found
+2026-11-19 Qianyuan and China Jushi disclosures. Explicit completed trades remain
+separate from two-register holding net changes; amounts are not inferred.
+
+CNINFO page counts use received catalogue rows (one announcement may have several
+security listings), with separate unique-announcement counts, duplicate-page and
+truncation checks. A 2-day overlap, durable document ledger and bounded PDF queue
+allow later attempts to resume. Exact original hashes are retained; revisions,
+unknown formats, scanned documents, partial coverage and source failures remain
+visible. Access/rate denial stops that provider for the attempt. No-match is not
+zero trading and the discovery scope is not a complete public-account ledger.
+Unknown formats require evidence/rule review, not an automatic invented number.
+
+Partial retrieval/queue coverage opens or retains the same repository warning
+Issue and retries after the bounded interval; supported new facts may publish
+with that explicit partial status. A checked-with-pending status means source
+discovery finished but specified original documents still need interpretation,
+not that all institution holdings are current. Fund and ratio source/revision,
+algorithm, display and anonymous-publication gates still apply.
+
 ## 2026-11-20 source-readiness and watchdog repair
 
 The 02:23 Beijing delayed schedule attempted report 11/20 but all 137 tracked
@@ -49,9 +84,9 @@ All times below are Asia/Shanghai; cron is explicitly UTC:
 | `15 1 * * *` | 09:15 | Primary collection |
 | `47 1,2 * * *` | 09:47, 10:47 | Staggered recovery if a delivery is delayed/dropped or collection failed |
 | `45 3 * * *` | 11:45 | Final morning recovery |
-| `23 1-15 * * *` | Hourly 09:23-23:23 | Keep recovering a stale report beyond the morning; skip a verified current report |
+| `23 1-15 * * *` | Hourly 09:23-23:23 | Recover stale funds report; after verified publication, check disclosures when ≥1 hour old |
 
-Every scheduled attempt anonymously reads the date/mode and SHA-256 of the public homepage. A matching current report skips Python dependencies, collection, commit and deployment. A stale report, network error, HTTP error, malformed status, or hash mismatch runs the same fail-closed source/calculation pipeline. Manual dispatch intentionally performs real collection. Concurrency serializes all attempts; no second writer or new website is added.
+Every scheduled attempt anonymously reads the date/mode and SHA-256 of the public homepage. A matching current report with recent disclosure checks skips dependencies, collection, commit and deployment. A current report with a due disclosure check selects the lighter mode; stale/unverified publication runs the full source/calculation pipeline. Manual dispatch performs real collection unless explicitly selecting disclosure-only. Concurrency serializes all attempts; no second writer or new website is added. Trigger delivery remains GitHub best effort.
 
 ## 2026-11-18 hourly recovery extension
 

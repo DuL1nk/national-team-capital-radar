@@ -7,7 +7,7 @@ export {fs,assert};
 export const read=p=>JSON.parse(fs.readFileSync(p)),sha=b=>createHash('sha256').update(b).digest('hex');
 export const put=(p,v)=>{fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,typeof v==='string'||Buffer.isBuffer(v)?v:JSON.stringify(v));};
 export const load=()=>{const b=fs.readFileSync('automation/state/baseline.json.gz');assert.equal(sha(b),read('automation/state/manifest.json').baselineSha256,'Durable baseline SHA-256 mismatch');return JSON.parse(gunzipSync(b));};
-export const save=s=>{const b=gzipSync(JSON.stringify(s),{level:9});put('automation/state/baseline.json.gz',b);const manifest=read('automation/state/manifest.json');put('automation/state/manifest.json',{...manifest,baselineSha256:sha(b),bytes:b.length,fundAsOf:s.fundAsOf,ratioAsOf:s.D.ratio252.ratioAsOf,updatedAt:new Date().toISOString()});};
+export const save=s=>{const b=gzipSync(JSON.stringify(s),{level:9});put('automation/state/baseline.json.gz',b);const manifest=read('automation/state/manifest.json'),runtimeSources=(manifest.sources||[]).map(x=>({...x,sha256:sha(fs.readFileSync('automation/vendor/'+x.file))}));put('automation/state/manifest.json',{...manifest,runtimeSources,baselineSha256:sha(b),bytes:b.length,fundAsOf:s.fundAsOf,ratioAsOf:s.D.ratio252.ratioAsOf,updatedAt:new Date().toISOString()});};
 export const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 export const audit=[];
 export async function get(url,{referer='https://www.sse.com.cn/',timeoutMs=45000,retries=3,...options}={}){

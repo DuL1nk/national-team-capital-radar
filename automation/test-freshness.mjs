@@ -19,4 +19,12 @@ await test('homepage error refreshes',{pageCode:404},true,'public-freshness-unve
 await test('network failure refreshes',{reject:true},true,'public-freshness-unverified');
 await test('malformed status refreshes',{badJson:true},true,'public-freshness-unverified');
 await test('manual always performs actual collection',{eventName:'workflow_dispatch'},true,'manual-current-collection');
+for(const [label,extra,expected,reason]of [
+ ['missing disclosure check',{},true,'disclosure-check-due'],
+ ['expired check',{disclosure_checked_at:'2026-11-20T02:59:59Z',disclosure_status:'checked'},true,'disclosure-check-due'],
+ ['fresh check',{disclosure_checked_at:'2026-11-20T03:30:00Z',disclosure_status:'checked'},false,'today-anonymously-verified'],
+ ['partial waits bounded interval',{disclosure_checked_at:'2026-11-20T03:30:00Z',disclosure_status:'partial'},false,'disclosure-check-partial-waiting-retry'],
+ ['partial retries when due',{disclosure_checked_at:'2026-11-20T02:30:00Z',disclosure_status:'partial'},true,'disclosure-check-due'],
+ ['future invalid check',{disclosure_checked_at:'2026-11-20T05:00:00Z'},true,'disclosure-check-due']
+]){let calls=0;const fetchImpl=async()=>++calls===1?new Response(JSON.stringify({...current,...extra})):new Response(body);const r=await refreshDecision({eventName:'schedule',reportDate:date,fetchImpl,checkDisclosures:true,now:new Date('2026-11-20T04:00:00Z')});assert.equal(r.run,expected,label);assert.equal(r.reason,reason,label);if(expected)assert.equal(r.mode,'disclosures',label);checks++;}
 console.log(JSON.stringify({status:'passed',checks,networkUsed:false}));
