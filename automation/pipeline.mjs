@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fs,read,put,load,save,assert,esc,sha,dateCN} from './lib.mjs';
+import {statusBanner} from './status-banner.mjs';
 const root=process.cwd(),offline=process.argv.includes('--offline'),vendor='automation/vendor',date=dateCN();
 fs.mkdirSync('build',{recursive:true});
 function run(args,{cwd=root,log}={}){const r=spawnSync(process.execPath,args,{cwd,...(log?{encoding:'utf8',maxBuffer:20*1024*1024}:{stdio:'inherit'})});if(log)put('build/'+log,(r.stdout||'')+'\n'+(r.stderr||''));if(r.status!==0)throw Error(args[0]+' failed: '+String(r.stderr||r.stdout||'see preceding step output').slice(-5000));}
@@ -27,6 +28,7 @@ run(['work/etf_coverage_20261105/render.mjs','--date',reportDate,'--cutoff',end,
 const mainName=`national_team_capital_monitor_${reportDate}.html`,studyName=`hs300_four_etf_backtest_${reportDate}.html`;
 let html=fs.readFileSync(vendor+'/'+mainName,'utf8');
 html=html.replace('<span class="pill">公开来源 · 非投资建议</span>',`<span class="pill">公开来源 · 非投资建议</span><span class="pill">无模型云端数据版</span>`).replace('<main class="wrap dash">',`<main class="wrap dash"><p class="chart-note" id="cloudStatus">${offline?'离线自检，禁止发布':'GitHub Actions 云端数据更新'} · 采集 ${esc(state.collectedAt||'未执行')} · 资金 ${end} · 分位 ${D.ratio252.ratioAsOf} · 机构数量已核快照 ${state.institutionConfirmedAt}。新闻分析未启用。</p>`);
+html=html.replace('<main class="wrap dash">','<main class="wrap dash">'+statusBanner(reportDate));
 put('build/'+mainName,html);
 const stage='build/stage/public';fs.mkdirSync(stage,{recursive:true});
 const staticName=n=>['index.html','site-status.json','four-study-status.json','.nojekyll'].includes(n)||/^(?:national_team_capital_monitor_\d{4}-\d\d-\d\d|hs300_four_etf_backtest(?:_\d{4}-\d\d-\d\d)?)\.html$/.test(n);

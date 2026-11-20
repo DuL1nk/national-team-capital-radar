@@ -1,5 +1,39 @@
 # Schedule delivery and recovery
 
+## 2026-11-20 source-readiness and watchdog repair
+
+The 02:23 Beijing delayed schedule attempted report 11/20 but all 137 tracked
+SZSE products lacked 11/19 shares. HTTP 200 did not prove a complete workbook.
+Compilation correctly stopped and Pages retained report 11/19 / funds 11/18.
+
+- Automatic/recovery deliveries outside 09:00–23:59 Beijing now skip instead of
+  allowing a delayed previous-day cron to create the next morning report at 02:00.
+- Before the expensive NAV pass, official SZSE target-day coverage is checked.
+  Incomplete successful responses are re-fetched after 2, 4 and 8 minutes (four
+  fetches total). Lifecycle exits and pre-listing dates are excluded; no missing
+  value is filled with zero. Access-denial/rate-limit, unknown events, directory
+  changes and historical revisions are not bypassed. Exhaustion fails closed.
+- `data-watchdog.yml` independently checks the public date AND homepage SHA at
+  09:37–23:37 hourly, and on completion of the publisher. If stale and no publisher
+  is active, it dispatches the same serial `daily-data.yml` with `recovery=true`.
+  At most three watchdog dispatches per Beijing day prevent recursive chains;
+  normal scheduled attempts retain their own guard. This is a separate workflow
+  on the SAME GitHub platform, not an independent external scheduling service.
+- The watchdog maintains one bot-created repository Issue on failure and closes
+  it after anonymous current-date/hash verification. GitHub native notification
+  settings control delivery; the workflow does not configure email recipients.
+- The report has an inline status banner that makes staleness/failure visible,
+  using anonymous GitHub API reads with a date-only fallback when unavailable.
+- Only job-scoped `GITHUB_TOKEN` is used. No PAT, new account, paid runner or
+  second publisher is configured. A cross-platform scheduler still requires an
+  explicitly selected external account/provider and narrowly scoped authorization.
+
+Tests cover source-not-ready→ready, bounded exhaustion, no retry after access
+denial, midnight/09:00 boundary, active publisher deduplication, dispatch cap,
+and existing freshness/hash gates. A successful skipped run is still not proof
+of a new report. Real source collection, full validation, deploy and anonymous
+verification remain required.
+
 The only data publisher remains `.github/workflows/daily-data.yml` on `main`.
 All times below are Asia/Shanghai; cron is explicitly UTC:
 

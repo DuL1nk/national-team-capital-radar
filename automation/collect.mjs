@@ -1,6 +1,7 @@
 import {spawnSync} from 'node:child_process';
 import {load,read,put,get,audit,assert,sleep,mergeRows,dateCN,addDay,sha} from './lib.mjs';
 import {reviewedLifecycle} from './lifecycle.mjs';
+import {awaitSzseShares} from './readiness.mjs';
 const S=load(),args=process.argv.slice(2),date=args.includes('--date')?args[args.indexOf('--date')+1]:dateCN();
 process.on('uncaughtException',e=>{put('build/source_failure.json',{reportDate:date,failedAt:new Date().toISOString(),error:e.message,requestsCompleted:audit});console.error(e.stack);process.exit(1);});
 assert(/^\d{4}-\d\d-\d\d$/.test(date)&&date<=dateCN(),'Invalid report date');
@@ -14,7 +15,7 @@ for(const x of Object.values(D.indices)){x.rows=x.rows.filter(r=>r[0]<=end);asse
 const oldDates=D.productHistory.dates,buffer=oldDates.at(-2),newDates=D.indices.sh.rows.map(x=>x[0]).filter(d=>d>=buffer&&d<=end);assert(newDates.length<=60,'Long collection gap: controlled backfill required');
 const sse=JSON.parse(await get('https://query.sse.com.cn/commonQuery.do?'+new URLSearchParams({isPagination:'true','pageHelp.pageSize':'10000','pageHelp.pageNo':'1',sqlId:'COMMON_JJZWZ_JJLB_L'}),{referer:'https://etf.sse.com.cn/'}));assert.equal(sse.result.length,Number(sse.pageHelp.total),'SSE catalog truncation');
 const py=spawnSync('python3',['automation/szse.py',buffer,end],{stdio:'inherit'});assert.equal(py.status,0,'Official SZSE collection failed');
-const sz=read('build/raw/szse.json'),directory={sse:{rows:sse.result},szse:sz.directory};
+let sz=read('build/raw/szse.json');const directory={sse:{rows:sse.result},szse:sz.directory};
 const products=D.snapshots[previous].products,codes=new Set(products.map(p=>p.code)),directoryChanges=[];
 // Current validated pool is never silently replaced by a fund-name guess.
 for(const [exchange,key,fields]of [['sse','FUND_CODE',['INDEX_NAME','LISTING_DATE','FUND_ABBR','CATEGORY']],['szse','基金代码',['基金简称','上市日期','投资类别']]]){
@@ -33,6 +34,11 @@ for(const [exchange,key,fields]of [['sse','FUND_CODE',['INDEX_NAME','LISTING_DAT
 }
 S.lifecycleReview=reviewedLifecycle;
 put('build/directory_audit.json',{reportDate:date,changes:directoryChanges,historicalTracked:products.length,activeTracked:products.filter(p=>!(reviewedLifecycle[p.code]?.inactiveFrom<=end)).length,reviewedLifecycle});
+// Retry only source readiness, before the expensive NAV/market pass. Schema,
+// access-denial, historical revisions and classification errors remain fatal.
+sz=await awaitSzseShares({products,shares:S.shares,lifecycle:reviewedLifecycle,batches:sz,end,
+ onAttempt:result=>{put('build/readiness.json',{reportDate:date,...result});console.log(JSON.stringify({status:result.status,attempt:result.attempts.length,missing:result.attempts.at(-1).missing}));},
+ wait:sleep,refetch:()=>{const retry=spawnSync('python3',['automation/szse.py',buffer,end],{stdio:'inherit'});assert.equal(retry.status,0,'Official SZSE readiness retry failed');return read('build/raw/szse.json');}});
 const share=(d,c,n)=>{if(!codes.has(c))return;const old=S.shares[c][d];assert(old===undefined||Math.abs(old-n)<.11,'Official share historical revision '+c+' '+d);S.shares[c][d]=n;};
 for(const d of newDates){const raw=await get('https://query.sse.com.cn/commonQuery.do?'+new URLSearchParams({isPagination:'true','pageHelp.pageSize':'10000','pageHelp.pageNo':'1',sqlId:'COMMON_SSE_ZQPZ_ETFZL_XXPL_ETFGM_SEARCH_L',STAT_DATE:d})),j=JSON.parse(raw);assert.equal(j.result.length,Number(j.pageHelp.total));assert(j.result.length>500,'Empty/stale SSE date '+d);const seen=new Set();for(const r of j.result){assert.equal(r.STAT_DATE,d);assert(!seen.has(r.SEC_CODE));seen.add(r.SEC_CODE);const n=Number(r.TOT_VOL)*10000;assert(Number.isFinite(n)&&n>=0);share(d,r.SEC_CODE,n);}put('build/raw/sse_'+d+'.json',j);await sleep(250);}
 for(const [key,j]of Object.entries(sz))if(key.startsWith('shares_'))for(const[d,c,n]of j.rows)share(d,c,n);

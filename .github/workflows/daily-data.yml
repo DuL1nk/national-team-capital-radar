@@ -1,5 +1,5 @@
 name: Daily data refresh
-run-name: Daily data refresh · ${{ github.event_name }} · ${{ github.run_number }}
+run-name: Daily data refresh · ${{ inputs.recovery && 'watchdog' || github.event_name }} · ${{ github.run_number }}
 on:
   schedule:
     - cron: '15 1 * * *' # 09:15 Asia/Shanghai
@@ -10,6 +10,10 @@ on:
     inputs:
       publish:
         description: 'Publish only after validation (false for first cloud trial)'
+        type: boolean
+        default: false
+      recovery:
+        description: 'Watchdog recovery: respect report window and verified-current skip'
         type: boolean
         default: false
 # GitHub schedules are best effort. Staggered retries share the same serial,
@@ -43,6 +47,7 @@ jobs:
           TRIGGER_SCHEDULE: ${{ github.event.schedule }}
         run: |
           node automation/test-freshness.mjs
+          node automation/test-recovery.mjs
           node -e 'const f=require("node:fs"); f.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "## Trigger receipt\n\nEvent: " + process.env.TRIGGER_EVENT + "\n\nSchedule (UTC): " + (process.env.TRIGGER_SCHEDULE || "manual") + "\n\nRunner started: " + new Date().toISOString() + "\n\nPrimary/retries: 09:15 / 09:47 / 10:47 / 11:45; hourly stale-report recovery: 09:23-23:23 Asia/Shanghai. Anonymous current date/hash skips duplicate work. All deliveries remain best effort. A missing schedule run has no runner receipt.\n");'
       - name: Select publication mode
         id: mode
@@ -51,6 +56,8 @@ jobs:
         run: echo "publish=$PUBLISH_REQUEST" >> "$GITHUB_OUTPUT"
       - name: Avoid duplicate successful daily publication
         id: freshness
+        env:
+          RECOVERY_REQUEST: ${{ inputs.recovery || false }}
         run: node automation/should-run.mjs
       - uses: actions/setup-python@v5
         if: steps.freshness.outputs.run == 'true'
@@ -71,6 +78,7 @@ jobs:
           path: |
             build/source_audit.json
             build/source_failure.json
+            build/readiness.json
             build/directory_audit.json
             build/calculation_gates.json
             build/validation.json

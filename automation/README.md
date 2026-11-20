@@ -1,5 +1,11 @@
 # Cloud data pipeline (no model)
 
+11/20 repair: bounded official-share readiness retries (2/4/8 minutes), automatic
+report-window guard, separate same-platform hourly/completion watchdog, automatic
+repository failure Issue and live report-health banner. See SCHEDULING.md. There
+is still one publisher, one fixed URL, no zero filling and no private credential
+in the pipeline. This is not a cross-platform scheduler or an on-time SLA.
+
 Active since 2026-11-16. Run [43803248291](https://github.com/DuL1nk/national-team-capital-radar/actions/runs/43803248291) completed real cloud collection, validation, durable-state commit, Pages deployment, and anonymous date/SHA checks of all historical/research HTML. Scheduled start 09:15 Asia/Shanghai (UTC 01:15), recovery 09:47, 10:47 and 11:45; a matching already-published daily report is skipped before collection dependencies are installed. The former local `09-15` writer is paused. The industry-research task is not changed. See [SCHEDULING.md](SCHEDULING.md) for the 11/17 missed-delivery investigation, testable guard and best-effort limitation.
 
 Since 11/18 the same workflow also checks hourly at 09:23-23:23 Beijing until today's anonymous report date/hash is verified. This extends recovery beyond the morning after an 11/17 `schedule` delivery arrived at 20:28 (its configured time was 11:45). It is still best effort; a 19-second successful skip is not proof that a new day's data was automatically refreshed. There is still one serial, fail-closed publisher and one fixed URL.

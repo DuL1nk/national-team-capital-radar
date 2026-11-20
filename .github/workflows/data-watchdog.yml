@@ -1,0 +1,39 @@
+name: Data freshness watchdog
+on:
+  schedule:
+    - cron: '37 1-15 * * *' # hourly 09:37-23:37 Beijing, separate schedule
+  workflow_run:
+    workflows: ['Daily data refresh']
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+  issues: write
+concurrency:
+  group: national-team-freshness-watchdog
+  cancel-in-progress: false
+jobs:
+  recover:
+    if: github.repository == 'DuL1nk/national-team-capital-radar'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node automation/test-recovery.mjs
+      - name: Verify public freshness, recover and maintain failure alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node automation/watchdog.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: watchdog-${{ github.run_id }}
+          path: build/watchdog.json
+          retention-days: 14
