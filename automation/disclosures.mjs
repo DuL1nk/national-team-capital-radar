@@ -23,10 +23,10 @@ export async function refreshDisclosures(S,{reportDate,maxDocuments=300}={}){
  const previous=S.institutionRefresh||{},from=addDay(previous.catalogThrough||S.institutionConfirmedAt||reportDate,-2),queries=[],candidates=new Map(),errors=[];
  function accept(x){if(!/\.pdf$/i.test(x.adjunctUrl||''))return;const u='https://static.cninfo.com.cn/'+x.adjunctUrl,publication=u.match(/finalpage\/(\d{4}-\d\d-\d\d)\//)?.[1],d={id:String(x.announcementId||u.match(/(\d+)\.pdf/i)?.[1]),code:x.secCode,issuer:x.secName,title:String(x.announcementTitle||'').replace(/<[^>]*>/g,''),metadataDate:cnDate(x.announcementTime),disclosureDate:publication||cnDate(x.announcementTime),url:u};candidates.set(u,d);}
  let catalogDenied=false,pdfDenied=false;
- async function query(keyword,allMarket=false,day=null,targetCode=null){let count=0,total=0,complete=false,pages=0,lastPage='';const seen=new Set(),qFrom=day||from,qThrough=day||reportDate;
+ async function query(keyword,allMarket=false,day=null,targetCode=null,orgId=null){let count=0,total=0,complete=false,pages=0,lastPage='';const seen=new Set(),qFrom=day||from,qThrough=day||reportDate;
   if(catalogDenied){queries.push({keyword,allMarket,from:qFrom,through:qThrough,pages:0,total:null,received:0,unique:0,complete:false,error:'Earlier access/rate response; stopped this provider'});return;}
   try{for(let page=1;page<=(allMarket?80:10);page++){
-   const raw=await get('https://www.cninfo.com.cn/new/hisAnnouncement/query',{referer:'https://www.cninfo.com.cn/',method:'POST',timeoutMs:20000,retries:2,headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({pageNum:String(page),pageSize:'30',column:'szse',tabName:'fulltext',stock:'',searchkey:keyword,seDate:qFrom+'~'+qThrough,sortName:'time',sortType:'desc',isHLtitle:'true'})});
+   const raw=await get('https://www.cninfo.com.cn/new/hisAnnouncement/query',{referer:'https://www.cninfo.com.cn/',method:'POST',timeoutMs:20000,retries:2,headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({pageNum:String(page),pageSize:'30',column:'szse',tabName:'fulltext',stock:targetCode?targetCode+','+orgId:'',searchkey:targetCode?'':keyword,seDate:qFrom+'~'+qThrough,sortName:'time',sortType:'desc',isHLtitle:'true'})});
    const j=JSON.parse(raw),rows=j.announcements||[];if(!Array.isArray(rows)||!Number.isFinite(Number(j.totalAnnouncement)))throw Error('Announcement schema');pages++;total=Number(j.totalAnnouncement);const pageKey=rows.map(x=>x.announcementId+'|'+x.secCode).join(',');
    for(const x of rows){if(targetCode&&x.secCode!==targetCode)throw Error('Targeted issuer query returned another security');const key=String(x.announcementId||x.adjunctUrl);seen.add(key);const title=String(x.announcementTitle).replace(/<[^>]*>/g,'');if(relevantTitle.test(title)||!allMarket&&/中央汇金|汇金资产|中国证券金融|国新投资|国新宏盛|国新产业资本|中国诚通|诚通金控|社保基金|养老保险基金|梧桐树|国家集成电路/.test(title))accept(x);}
    count+=rows.length;if(!j.hasMore||count>=total){if(count<total)throw Error('Pagination incomplete '+count+'/'+total);complete=true;break;}if(!rows.length||pageKey===lastPage)throw Error('Empty/repeated page before total');lastPage=pageKey;await sleep(250);
@@ -35,10 +35,20 @@ export async function refreshDisclosures(S,{reportDate,maxDocuments=300}={}){
  }
  for(let day=from;day<=reportDate;day=addDay(day,1))await query('',true,day);
  for(const word of discoveryWords){await query(word);await sleep(250);}
- // Targeted numeric security search is verified against returned secCode.
+ // Resolve the official security identity; a numeric keyword alone can also
+ // match bond/prospectus text (observed for 601995), so it is not issuer scope.
  // It supplements non-exhaustive market pagination, never broadens aliases.
  const targets=new Set(['301660','002039','600176','688025','688433','601995','601186','601088','600970','600863','601058',...(previous.records||[]).map(r=>r.code),...Object.values(previous.documents||{}).filter(d=>d.hits?.length).map(d=>d.code)]);
- for(const code of [...targets].sort()){await query(code,false,null,code);await sleep(250);}
+ const orgIds=S.institutionOrgIds||{};
+ for(const code of [...targets].sort()){
+  if(catalogDenied)break;
+  try{let identity=orgIds[code];if(!identity||identity.checkedDate!==reportDate){
+   const raw=await get('https://www.cninfo.com.cn/new/information/topSearch/detailOfQuery',{referer:'https://www.cninfo.com.cn/',method:'POST',timeoutMs:20000,retries:2,headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({keyWord:code,maxSecNum:'10',maxListNum:'5'})});
+   const j=JSON.parse(raw),matches=(j.keyBoardList||[]).filter(x=>x.code===code&&x.orgId),ids=[...new Set(matches.map(x=>x.orgId))];if(ids.length!==1)throw Error('Official issuer identity unresolved');
+   identity=orgIds[code]={orgId:ids[0],checkedDate:reportDate,checkedAt:new Date().toISOString(),source:audit.at(-1).url,sha256:sha(raw)};
+  }await query(code,false,null,code,identity.orgId);}catch(e){if(/Access\/rate response/.test(e.message))catalogDenied=true;errors.push({source:code+' official identity',error:e.message});}await sleep(250);
+ }
+ S.institutionOrgIds=orgIds;
  for(const s of seeds)candidates.set(s.url,s);
  const ledger={...(previous.documents||{})},fresh=[...candidates.values()].sort((a,b)=>b.disclosureDate.localeCompare(a.disclosureDate));let fetched=0,cached=0;
  // Retain backlog across attempts. Revisions are not silently accepted.

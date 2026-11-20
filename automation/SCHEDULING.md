@@ -30,7 +30,10 @@ Unknown formats require evidence/rule review, not an automatic invented number.
 Anonymous UI acceptance also detected differing all-market pagination membership
 between local and hosted runs despite equal reported totals. Therefore known
 baseline/watch holdings and newly matched institutions' issuers are queried
-individually by security code each attempt, validating every returned secCode.
+individually by official security code+orgId each attempt, validating every returned
+secCode. The orgId is resolved from the official topSearch API daily; a numeric
+keyword alone can match bond/prospectus content (observed for 601995) and is not
+treated as an issuer-scoped query.
 Verified original documents seed the initial remediation; they are not a
 substitute for subsequent dated targeted discovery. All-market discovery is
 explicitly non-exhaustive. Allocation/greenshoe/registration titles are included
